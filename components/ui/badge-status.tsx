@@ -3,33 +3,33 @@ import { cn } from '@/lib/utils'
 import type { PatientStatus } from '@/lib/data'
 
 const statusConfig: Record<string, { label: string; className: string }> = {
-  'Action Needed': { label: 'Action Needed', className: 'bg-red-100 text-red-700 border border-red-200' },
-  'Due Soon': { label: 'Due Soon', className: 'bg-amber-100 text-amber-700 border border-amber-200' },
-  'On Track': { label: 'On Track', className: 'bg-green-100 text-green-700 border border-green-200' },
-  'Upcoming': { label: 'Upcoming', className: 'bg-amber-100 text-amber-700 border border-amber-200' },
-  'Discharged': { label: 'Discharged', className: 'bg-slate-100 text-slate-600 border border-slate-200' },
-  'Independent': { label: 'Independent', className: 'bg-teal-100 text-teal-700 border border-teal-200' },
-  'High Support': { label: 'High Support', className: 'bg-amber-100 text-amber-700 border border-amber-200' },
-  'Minor': { label: 'Minor', className: 'bg-purple-100 text-purple-700 border border-purple-200' },
-  'Pass': { label: 'Pass', className: 'bg-green-100 text-green-700 border border-green-200' },
-  'Fail': { label: 'Fail', className: 'bg-red-100 text-red-700 border border-red-200' },
-  'Paid': { label: 'Paid', className: 'bg-green-100 text-green-700 border border-green-200' },
-  'Pending': { label: 'Pending', className: 'bg-amber-100 text-amber-700 border border-amber-200' },
+  'Action Needed': { label: 'Action Needed', className: 'bg-[#FF3B30]/12 text-[#FF3B30]' },
+  'Due Soon': { label: 'Due Soon', className: 'bg-[#FF9500]/12 text-[#FF9500]' },
+  'On Track': { label: 'On Track', className: 'bg-[#34C759]/12 text-[#34C759]' },
+  'Upcoming': { label: 'Upcoming', className: 'bg-[#FF9500]/12 text-[#FF9500]' },
+  'Discharged': { label: 'Discharged', className: 'bg-[#8E8E93]/12 text-[#8E8E93]' },
+  'Independent': { label: 'Independent', className: 'bg-[#007AFF]/12 text-[#007AFF]' },
+  'High Support': { label: 'High Support', className: 'bg-[#FF9500]/12 text-[#FF9500]' },
+  'Minor': { label: 'Minor', className: 'bg-[#AF52DE]/12 text-[#AF52DE]' },
+  'Pass': { label: 'Pass', className: 'bg-[#34C759]/12 text-[#34C759]' },
+  'Fail': { label: 'Fail', className: 'bg-[#FF3B30]/12 text-[#FF3B30]' },
+  'Paid': { label: 'Paid', className: 'bg-[#34C759]/12 text-[#34C759]' },
+  'Pending': { label: 'Pending', className: 'bg-[#FF9500]/12 text-[#FF9500]' },
 }
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {
-  const config = statusConfig[status] ?? { label: status, className: 'bg-slate-100 text-slate-600 border border-slate-200' }
+  const config = statusConfig[status] ?? { label: status, className: 'bg-[#8E8E93]/12 text-[#8E8E93]' }
   return (
-    <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', config.className, className)}>
+    <span className={cn('inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold', config.className, className)}>
       {config.label}
     </span>
   )
 }
 
 export function AdmissionTypeBadge({ type }: { type: string }) {
-  const config = statusConfig[type] ?? { label: type, className: 'bg-slate-100 text-slate-600 border border-slate-200' }
+  const config = statusConfig[type] ?? { label: type, className: 'bg-[#8E8E93]/12 text-[#8E8E93]' }
   return (
-    <span className={cn('inline-flex items-center px-2 py-0.5 rounded text-xs font-medium', config.className)}>
+    <span className={cn('inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold', config.className)}>
       {config.label}
     </span>
   )

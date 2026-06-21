@@ -36,10 +36,10 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
 
   function daysDiffLabel(nextDue: string) {
     const diff = daysBetween(nextDue)
-    if (diff > 0) return { text: `${diff}d overdue`, cls: 'text-red-600 font-semibold' }
-    if (diff === 0) return { text: 'Due today', cls: 'text-amber-600 font-semibold' }
-    if (diff >= -2) return { text: `In ${Math.abs(diff)} day${Math.abs(diff) !== 1 ? 's' : ''}`, cls: 'text-amber-600 font-medium' }
-    return { text: `In ${Math.abs(diff)} days`, cls: 'text-green-600' }
+    if (diff > 0) return { text: `${diff}d overdue`, cls: 'text-[#FF3B30] font-semibold' }
+    if (diff === 0) return { text: 'Due today', cls: 'text-[#FF9500] font-semibold' }
+    if (diff >= -2) return { text: `In ${Math.abs(diff)}d`, cls: 'text-[#FF9500] font-medium' }
+    return { text: `In ${Math.abs(diff)}d`, cls: 'text-[#34C759]' }
   }
 
   async function handleSchedule() {
@@ -61,7 +61,6 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
       return
     }
 
-    // If Pass and patient is High Support → shift to Independent + create transfer
     if (newAssessment.result === 'Pass' && patient.admissionType === 'High Support') {
       await updateSubCategory(patient.activeAdmissionId, 'Independent')
       await insertTransfer({
@@ -75,9 +74,9 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
         triggered_by: 'System',
         notes: newAssessment.notes || null,
       })
-      onAddToast('success', 'Assessment saved — shifted to Independent', `For ${patient.name}`)
+      onAddToast('success', 'Shifted to Independent', `${patient.name}`)
     } else {
-      onAddToast('success', 'Assessment recorded', `For ${patient.name}`)
+      onAddToast('success', 'Assessment recorded', `${patient.name}`)
     }
 
     setScheduleModal(false)
@@ -85,13 +84,13 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
   }
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-5 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <div className="flex gap-1 bg-slate-100 p-1 rounded-lg">
+        <div className="flex gap-0.5 bg-[#E5E5EA] p-0.5 rounded-xl">
           {['Due / Upcoming', 'Completed'].map((t, i) => (
             <button key={i} onClick={() => setTab(i)}
-              className={cn('px-4 py-1.5 text-xs font-medium rounded-md transition-colors',
-                tab === i ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              className={cn('px-4 py-2 text-[13px] font-medium rounded-[10px] transition-colors',
+                tab === i ? 'bg-white text-[#000000] shadow-sm' : 'text-[#8E8E93]'
               )}
             >
               {t}
@@ -100,49 +99,47 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
         </div>
         <button
           onClick={() => setScheduleModal(true)}
-          className="flex items-center gap-1.5 bg-[#0D6E6E] text-white px-4 py-2 rounded-lg text-xs font-medium hover:bg-[#0A5858]"
+          className="flex items-center gap-1.5 bg-[#007AFF] text-white px-4 py-2.5 rounded-xl text-[13px] font-medium active:opacity-80"
         >
           <Plus className="w-3.5 h-3.5" />
-          Schedule New Assessment
+          New Assessment
         </button>
       </div>
 
       {tab === 0 && (
-        <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-slate-100 overflow-hidden">
+        <div className="ios-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-[13px]">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  {['Patient', 'Admission Type', 'Last Assessment', 'Last Result', 'Next Due', 'Days Until Due', 'Action'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-slate-500 font-semibold uppercase tracking-wide">{h}</th>
+                <tr className="bg-[#F2F2F7]/60">
+                  {['Patient', 'Type', 'Last Assessment', 'Result', 'Next Due', 'Status', ''].map(h => (
+                    <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {duePatients.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-16 text-slate-400">
-                      <p className="font-medium">No assessments due</p>
-                    </td>
+                    <td colSpan={7} className="text-center py-16 text-[#8E8E93]">No assessments due</td>
                   </tr>
                 ) : (
-                  duePatients.map((p, i) => {
+                  duePatients.map((p) => {
                     const last = p.assessments.slice(-1)[0]
                     const label = last?.nextDue ? daysDiffLabel(last.nextDue) : null
                     return (
-                      <tr key={p.id} className={cn('border-b border-slate-50 last:border-0', i % 2 === 1 ? 'bg-slate-50/50' : '')}>
-                        <td className="px-4 py-3">
-                          <p className="font-medium text-slate-800">{p.name}</p>
-                          <p className="text-slate-400 font-mono">{p.id}</p>
+                      <tr key={p.id} className="ios-separator last:[border-bottom:none]">
+                        <td className="px-5 py-3">
+                          <p className="font-medium text-[#000000]">{p.name}</p>
+                          <p className="text-[#8E8E93] font-mono text-[11px]">{p.id}</p>
                         </td>
-                        <td className="px-4 py-3"><AdmissionTypeBadge type={p.admissionType} /></td>
-                        <td className="px-4 py-3 font-mono text-slate-600">{last ? formatDate(last.date) : '—'}</td>
-                        <td className="px-4 py-3">{last ? <StatusBadge status={last.result} /> : '—'}</td>
-                        <td className="px-4 py-3 font-mono text-slate-600">{last?.nextDue ? formatDate(last.nextDue) : '—'}</td>
-                        <td className={cn('px-4 py-3', label?.cls ?? '')}>{label?.text ?? '—'}</td>
-                        <td className="px-4 py-3">
-                          <button onClick={() => onViewPatient(p.id)} className="p-1.5 rounded text-slate-400 hover:text-[#0D6E6E] hover:bg-teal-50">
-                            <Eye className="w-3.5 h-3.5" />
+                        <td className="px-5 py-3"><AdmissionTypeBadge type={p.admissionType} /></td>
+                        <td className="px-5 py-3 text-[#3A3A3C]">{last ? formatDate(last.date) : '—'}</td>
+                        <td className="px-5 py-3">{last ? <StatusBadge status={last.result} /> : '—'}</td>
+                        <td className="px-5 py-3 text-[#3A3A3C]">{last?.nextDue ? formatDate(last.nextDue) : '—'}</td>
+                        <td className={cn('px-5 py-3', label?.cls ?? '')}>{label?.text ?? '—'}</td>
+                        <td className="px-5 py-3">
+                          <button onClick={() => onViewPatient(p.id)} className="p-2 rounded-lg text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/8">
+                            <Eye className="w-4 h-4" />
                           </button>
                         </td>
                       </tr>
@@ -156,28 +153,28 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
       )}
 
       {tab === 1 && (
-        <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-slate-100 overflow-hidden">
+        <div className="ios-card overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table className="w-full text-[13px]">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  {['Date', 'Patient', 'Type', 'Conducted By', 'Result', 'Notes'].map(h => (
-                    <th key={h} className="text-left px-4 py-3 text-slate-500 font-semibold uppercase tracking-wide">{h}</th>
+                <tr className="bg-[#F2F2F7]/60">
+                  {['Date', 'Patient', 'Type', 'By', 'Result', 'Notes'].map(h => (
+                    <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {allAssessments.map((a, i) => (
-                  <tr key={a.id} className={cn('border-b border-slate-50 last:border-0', i % 2 === 1 ? 'bg-slate-50/50' : '')}>
-                    <td className="px-4 py-3 font-mono text-slate-600">{formatDate(a.date)}</td>
-                    <td className="px-4 py-3">
-                      <p className="font-medium text-slate-800">{a.patientName}</p>
-                      <p className="text-slate-400 font-mono">{a.patientId}</p>
+                {allAssessments.map((a) => (
+                  <tr key={a.id} className="ios-separator last:[border-bottom:none]">
+                    <td className="px-5 py-3 text-[#3A3A3C]">{formatDate(a.date)}</td>
+                    <td className="px-5 py-3">
+                      <p className="font-medium text-[#000000]">{a.patientName}</p>
+                      <p className="text-[#8E8E93] font-mono text-[11px]">{a.patientId}</p>
                     </td>
-                    <td className="px-4 py-3"><AdmissionTypeBadge type={a.admissionType} /></td>
-                    <td className="px-4 py-3 text-slate-600">{a.conductedBy}</td>
-                    <td className="px-4 py-3"><StatusBadge status={a.result} /></td>
-                    <td className="px-4 py-3 text-slate-500 max-w-xs truncate">{a.notes || '—'}</td>
+                    <td className="px-5 py-3"><AdmissionTypeBadge type={a.admissionType} /></td>
+                    <td className="px-5 py-3 text-[#3A3A3C]">{a.conductedBy}</td>
+                    <td className="px-5 py-3"><StatusBadge status={a.result} /></td>
+                    <td className="px-5 py-3 text-[#8E8E93] max-w-xs truncate">{a.notes || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -186,44 +183,44 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
         </div>
       )}
 
-      <Modal open={scheduleModal} onClose={() => setScheduleModal(false)} title="Schedule New Assessment">
+      <Modal open={scheduleModal} onClose={() => setScheduleModal(false)} title="New Assessment">
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Patient</label>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Patient</label>
             <select value={selectedPatient} onChange={e => setSelectedPatient(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-[#0D6E6E]/30">
+              className="w-full bg-[#F2F2F7] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
               <option value="">Select patient</option>
               {active.map(p => <option key={p.id} value={p.id}>{p.name} ({p.id})</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Date</label>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Date</label>
             <input type="date" value={newAssessment.date} onChange={e => setNewAssessment(s => ({ ...s, date: e.target.value }))}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#0D6E6E]/30" />
+              className="w-full bg-[#F2F2F7] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Assessed By</label>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Assessed By</label>
             <select value={newAssessment.assessedBy} onChange={e => setNewAssessment(s => ({ ...s, assessedBy: e.target.value }))}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-[#0D6E6E]/30">
+              className="w-full bg-[#F2F2F7] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
               {DOCTORS.map(d => <option key={d}>{d}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Result</label>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Result</label>
             <select value={newAssessment.result} onChange={e => setNewAssessment(s => ({ ...s, result: e.target.value }))}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-[#0D6E6E]/30">
+              className="w-full bg-[#F2F2F7] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
               <option value="Pass">Pass</option>
               <option value="Fail">Fail</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1.5">Notes</label>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Notes</label>
             <textarea rows={2} value={newAssessment.notes} onChange={e => setNewAssessment(s => ({ ...s, notes: e.target.value }))}
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none outline-none focus:ring-2 focus:ring-[#0D6E6E]/30" />
+              className="w-full bg-[#F2F2F7] rounded-xl px-4 py-3 text-[14px] resize-none outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
           </div>
           <div className="flex justify-end gap-2">
-            <button onClick={() => setScheduleModal(false)} className="px-4 py-2 text-sm border border-slate-200 rounded-lg hover:bg-slate-50">Cancel</button>
-            <button onClick={handleSchedule} disabled={!selectedPatient} className="px-4 py-2 text-sm bg-[#0D6E6E] text-white rounded-lg hover:bg-[#0A5858] disabled:opacity-50">Schedule</button>
+            <button onClick={() => setScheduleModal(false)} className="px-5 py-2.5 text-[14px] bg-[#E5E5EA] rounded-xl active:bg-[#D1D1D6]">Cancel</button>
+            <button onClick={handleSchedule} disabled={!selectedPatient} className="px-5 py-2.5 text-[14px] bg-[#007AFF] text-white rounded-xl font-medium active:opacity-80 disabled:opacity-40">Save</button>
           </div>
         </div>
       </Modal>

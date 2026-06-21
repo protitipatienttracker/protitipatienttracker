@@ -276,6 +276,37 @@ export async function fetchAllPatientCodes(): Promise<string[]> {
   return (data ?? []).map((r: { patient_code: string }) => r.patient_code)
 }
 
+// ─── Update Patient Field ─────────────────────────────────────────────────────
+
+export async function updatePatientField(patientId: string, field: string, value: string) {
+  const fieldMap: Record<string, string> = {
+    'Phone': 'phone',
+    'Address': 'address',
+    'Emergency': 'emergency_contact_name',
+    'Emergency Ph.': 'emergency_contact_phone',
+    'Doctor': 'treating_doctor',
+  }
+  const dbField = fieldMap[field]
+  if (!dbField) return { error: { message: 'Unknown field' } }
+  const { error } = await supabase
+    .from('patients')
+    .update({ [dbField]: value })
+    .eq('id', patientId)
+  return { error }
+}
+
+// ─── Undo Discharge (re-activate admission) ──────────────────────────────────
+
+export async function undoDischarge(admissionId: string) {
+  const { data, error } = await supabase
+    .from('admissions')
+    .update({ status: 'Active', discharge_date: null, discharge_reason: null })
+    .eq('id', admissionId)
+    .select()
+    .single()
+  return { data: data as DbAdmission | null, error }
+}
+
 // ─── Staff Management ─────────────────────────────────────────────────────────
 
 import type { DbStaff, DbSettings } from './supabase'

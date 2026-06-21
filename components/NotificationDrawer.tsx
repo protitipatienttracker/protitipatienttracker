@@ -4,10 +4,27 @@ import { cn } from '@/lib/utils'
 import type { Notification } from '@/lib/data'
 
 const iconMap = {
-  error: <AlertCircle className="w-4 h-4 text-red-500 shrink-0" />,
-  warning: <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" />,
-  success: <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />,
-  info: <Info className="w-4 h-4 text-blue-500 shrink-0" />,
+  error: <AlertCircle className="w-5 h-5 text-[#FF3B30] shrink-0" />,
+  warning: <AlertCircle className="w-5 h-5 text-[#FF9500] shrink-0" />,
+  success: <CheckCircle2 className="w-5 h-5 text-[#34C759] shrink-0" />,
+  info: <Info className="w-5 h-5 text-[#007AFF] shrink-0" />,
+}
+
+function relativeTime(time: string): string {
+  if (!time) return ''
+  const now = new Date()
+  const t = new Date(time)
+  if (isNaN(t.getTime())) return time
+  const diffMs = now.getTime() - t.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return 'Just now'
+  if (diffMin < 60) return `${diffMin}m ago`
+  const diffHr = Math.floor(diffMin / 60)
+  if (diffHr < 24) return `${diffHr}h ago`
+  const diffDays = Math.floor(diffHr / 24)
+  if (diffDays === 1) return 'Yesterday'
+  if (diffDays < 7) return `${diffDays}d ago`
+  return time
 }
 
 interface Props {
@@ -23,41 +40,42 @@ export default function NotificationDrawer({ open, notifications, onClose, onMar
 
   return (
     <>
-      {open && <div className="fixed inset-0 z-40" onClick={onClose} />}
+      {open && <div className="fixed inset-0 z-40 bg-black/30" onClick={onClose} />}
       <div
         className={cn(
-          'fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300',
+          'fixed top-0 right-0 h-full w-80 bg-[#F2F2F7] z-50 flex flex-col transition-transform duration-300',
           open ? 'translate-x-0' : 'translate-x-full'
         )}
+        style={{ boxShadow: open ? '-8px 0 32px rgba(0,0,0,0.1)' : 'none' }}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-          <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-slate-600" />
-            <h2 className="font-semibold text-slate-800 text-sm">Notifications</h2>
+        <div className="flex items-center justify-between px-5 py-4 bg-white ios-separator">
+          <div className="flex items-center gap-2.5">
+            <Bell className="w-[18px] h-[18px] text-[#007AFF]" />
+            <h2 className="font-semibold text-[#000000] text-[17px]">Notifications</h2>
             {unread > 0 && (
-              <span className="bg-red-100 text-red-700 text-xs px-1.5 py-0.5 rounded-full font-medium">
-                {unread} new
+              <span className="bg-[#FF3B30] text-white text-[11px] px-2 py-0.5 rounded-full font-semibold">
+                {unread}
               </span>
             )}
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-[#F2F2F7] flex items-center justify-center text-[#8E8E93] active:bg-[#E5E5EA]">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {unread > 0 && (
-          <div className="px-5 py-2 border-b border-slate-100">
-            <button onClick={onMarkAllRead} className="text-xs text-[#0D6E6E] hover:underline">
+          <div className="px-5 py-2.5 bg-white ios-separator">
+            <button onClick={onMarkAllRead} className="text-[13px] text-[#007AFF] font-medium active:opacity-60">
               Mark all as read
             </button>
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
           {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full gap-2 text-slate-400">
+            <div className="flex flex-col items-center justify-center h-full gap-2 text-[#8E8E93]">
               <Bell className="w-8 h-8" />
-              <p className="text-sm">No notifications</p>
+              <p className="text-[14px]">No notifications</p>
             </div>
           ) : (
             notifications.map(n => (
@@ -65,20 +83,21 @@ export default function NotificationDrawer({ open, notifications, onClose, onMar
                 key={n.id}
                 onClick={() => onMarkRead(n.id)}
                 className={cn(
-                  'flex items-start gap-3 px-5 py-4 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition-colors',
-                  !n.read && 'bg-blue-50/50'
+                  'flex items-start gap-3 px-4 py-3.5 rounded-xl cursor-pointer transition-colors',
+                  !n.read ? 'bg-white' : 'bg-white/60',
                 )}
+                style={{ boxShadow: !n.read ? '0 0 0 0.5px rgba(0,0,0,0.04)' : 'none' }}
               >
                 {iconMap[n.type]}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <p className={cn('text-sm', n.read ? 'text-slate-600' : 'text-slate-800 font-medium')}>
+                    <p className={cn('text-[14px]', n.read ? 'text-[#3A3A3C]' : 'text-[#000000] font-medium')}>
                       {n.title}
                     </p>
-                    {!n.read && <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-1" />}
+                    {!n.read && <span className="w-2 h-2 rounded-full bg-[#007AFF] shrink-0 mt-1.5" />}
                   </div>
-                  <p className="text-xs text-slate-500 mt-0.5">{n.message}</p>
-                  <p className="text-xs text-slate-400 mt-1">{n.time}</p>
+                  <p className="text-[12px] text-[#8E8E93] mt-0.5">{n.message}</p>
+                  <p className="text-[11px] text-[#C7C7CC] mt-1">{relativeTime(n.time)}</p>
                 </div>
               </div>
             ))

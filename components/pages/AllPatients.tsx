@@ -1,16 +1,16 @@
 'use client'
-import { useState } from 'react'
-import { Search, UserPlus, Eye, Pencil, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState, useRef } from 'react'
+import { Search, UserPlus, Eye, Pencil, ChevronLeft, ChevronRight, Phone, FileText, Check } from 'lucide-react'
 import { StatusBadge, AdmissionTypeBadge } from '@/components/ui/badge-status'
 import { formatDate, type Patient } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
 function Avatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) {
   const initials = name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
-  const colors = ['bg-teal-500', 'bg-blue-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500', 'bg-indigo-500']
+  const colors = ['bg-[#007AFF]', 'bg-[#5856D6]', 'bg-[#AF52DE]', 'bg-[#FF9500]', 'bg-[#FF3B30]', 'bg-[#34C759]']
   const color = colors[name.charCodeAt(0) % colors.length]
   return (
-    <div className={cn('rounded-full flex items-center justify-center text-white font-semibold shrink-0', color, size === 'sm' ? 'w-8 h-8 text-xs' : 'w-10 h-10 text-sm')}>
+    <div className={cn('rounded-full flex items-center justify-center text-white font-semibold shrink-0', color, size === 'sm' ? 'w-8 h-8 text-[11px]' : 'w-10 h-10 text-[13px]')}>
       {initials}
     </div>
   )
@@ -26,6 +26,10 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkMode, setBulkMode] = useState(false)
+  const [swipedRow, setSwipedRow] = useState<string | null>(null)
+  const touchStartX = useRef(0)
 
   const filtered = patients.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.id.toLowerCase().includes(search.toLowerCase())
@@ -34,24 +38,30 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
     return matchSearch && matchType && matchStatus
   })
 
+  function toggleSelect(id: string) {
+    setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n })
+  }
+  function selectAll() { setSelected(new Set(filtered.map(p => p.id))) }
+  function clearSelection() { setSelected(new Set()); setBulkMode(false) }
+
   return (
-    <div className="p-6 space-y-4">
+    <div className="p-5 sm:p-6 space-y-4">
       {/* Header row */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex flex-wrap gap-2 flex-1">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400" />
+            <Search className="absolute left-3 top-[9px] w-[14px] h-[14px] text-[#8E8E93]" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search name or ID..."
-              className="pl-8 pr-3 py-2 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#0D6E6E]/30 bg-white w-60"
+              placeholder="Search"
+              className="pl-8 pr-3 py-2 bg-[#E5E5EA]/60 rounded-xl text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 w-56 placeholder-[#8E8E93]"
             />
           </div>
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-[#0D6E6E]/30 text-slate-700"
+            className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]"
           >
             {['All', 'Independent', 'High Support', 'Minor', 'Discharged'].map(o => (
               <option key={o} value={o}>{o}</option>
@@ -60,7 +70,7 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-[#0D6E6E]/30 text-slate-700"
+            className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]"
           >
             {['All', 'Active', 'Discharged'].map(o => (
               <option key={o} value={o}>{o}</option>
@@ -69,39 +79,59 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
         </div>
         <button
           onClick={onNewAdmission}
-          className="flex items-center gap-2 bg-[#0D6E6E] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#0A5858] transition-colors shrink-0"
+          className="flex items-center gap-2 bg-[#007AFF] text-white px-4 py-2.5 rounded-xl text-[14px] font-medium active:opacity-80 transition-opacity shrink-0"
         >
           <UserPlus className="w-4 h-4" />
           New Admission
         </button>
+        {!bulkMode ? (
+          <button onClick={() => setBulkMode(true)} className="px-3 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6] shrink-0">Select</button>
+        ) : (
+          <div className="flex gap-2 shrink-0">
+            <button onClick={selectAll} className="px-3 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">All</button>
+            <button onClick={clearSelection} className="px-3 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">Done</button>
+          </div>
+        )}
       </div>
 
+      {/* Bulk action bar */}
+      {bulkMode && selected.size > 0 && (
+        <div className="ios-card px-5 py-3 flex items-center justify-between">
+          <span className="text-[13px] text-[#000000] font-medium">{selected.size} selected</span>
+          <div className="flex gap-2">
+            <button className="px-3 py-2 bg-[#007AFF]/10 text-[#007AFF] rounded-xl text-[12px] font-medium active:opacity-70">Export CSV</button>
+            <button className="px-3 py-2 bg-[#5856D6]/10 text-[#5856D6] rounded-xl text-[12px] font-medium active:opacity-70">Assign Doctor</button>
+            <button className="px-3 py-2 bg-[#FF9500]/10 text-[#FF9500] rounded-xl text-[12px] font-medium active:opacity-70">Send Reminder</button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
-      <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-slate-100 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide">Patient</th>
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide">ID</th>
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide hidden md:table-cell">Age</th>
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide">Type</th>
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide hidden lg:table-cell">Admission Date</th>
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide hidden lg:table-cell">Sub-Status</th>
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide hidden xl:table-cell">Days</th>
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide hidden xl:table-cell">Next Action</th>
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide">Status</th>
-                <th className="text-left px-4 py-3 text-xs text-slate-500 font-semibold uppercase tracking-wide">Actions</th>
+      <div className="ios-card overflow-hidden">
+        <div className="overflow-x-auto max-h-[calc(100vh-220px)] overflow-y-auto">
+          <table className="w-full text-[13px]">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-[#F2F2F7]">
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">Patient</th>
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">ID</th>
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden md:table-cell">Age</th>
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">Type</th>
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden lg:table-cell">Admitted</th>
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden lg:table-cell">Sub-Status</th>
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden xl:table-cell">Days</th>
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden xl:table-cell">Next Action</th>
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">Status</th>
+                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium"></th>
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-16 text-slate-400">
+                  <td colSpan={10} className="text-center py-16 text-[#8E8E93]">
                     <div className="flex flex-col items-center gap-2">
                       <Search className="w-8 h-8 opacity-30" />
                       <p className="font-medium">No patients found</p>
-                      <p className="text-xs">Try adjusting your search or filters</p>
+                      <p className="text-[12px]">Try adjusting your search or filters</p>
                     </div>
                   </td>
                 </tr>
@@ -110,46 +140,56 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
                   <tr
                     key={p.id}
                     className={cn(
-                      'border-b border-slate-50 last:border-0 transition-colors cursor-pointer',
-                      i % 2 === 1 ? 'bg-slate-50/50' : 'bg-white',
-                      'hover:bg-teal-50/30'
+                      'ios-separator last:[border-bottom:none] transition-all cursor-pointer hover:bg-[#F2F2F7]/50 active:bg-[#E5E5EA]/50 animate-fade-in-up',
+                      selected.has(p.id) && 'bg-[#007AFF]/5'
                     )}
-                    onClick={() => onViewPatient(p.id)}
+                    style={{ animationDelay: `${i * 30}ms` }}
+                    onClick={() => bulkMode ? toggleSelect(p.id) : onViewPatient(p.id)}
+                    onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
+                    onTouchEnd={e => {
+                      const diff = e.changedTouches[0].clientX - touchStartX.current
+                      if (diff < -60) setSwipedRow(p.id)
+                      else if (diff > 30) setSwipedRow(null)
+                    }}
                   >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
+                    {bulkMode && (
+                      <td className="pl-5 py-3 w-10">
+                        <div className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center',
+                          selected.has(p.id) ? 'bg-[#007AFF] border-[#007AFF]' : 'border-[#C7C7CC]'
+                        )}>
+                          {selected.has(p.id) && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                      </td>
+                    )}
+                    <td className="px-5 py-3">
+                      <div className="flex items-center gap-2.5">
                         <Avatar name={p.name} />
-                        <span className="font-medium text-slate-800">{p.name}</span>
+                        <span className="font-medium text-[#000000]">{p.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 font-mono text-slate-500">{p.id}</td>
-                    <td className="px-4 py-3 text-slate-600 hidden md:table-cell">{p.age}</td>
-                    <td className="px-4 py-3"><AdmissionTypeBadge type={p.admissionType} /></td>
-                    <td className="px-4 py-3 font-mono text-slate-500 hidden lg:table-cell">{formatDate(p.admissionDate)}</td>
-                    <td className="px-4 py-3 text-slate-600 hidden lg:table-cell">{p.currentSubStatus}</td>
-                    <td className="px-4 py-3 font-mono text-slate-600 hidden xl:table-cell">
+                    <td className="px-5 py-3 font-mono text-[#8E8E93] text-[12px]">{p.id}</td>
+                    <td className="px-5 py-3 text-[#3A3A3C] hidden md:table-cell">{p.age}</td>
+                    <td className="px-5 py-3"><AdmissionTypeBadge type={p.admissionType} /></td>
+                    <td className="px-5 py-3 text-[#8E8E93] hidden lg:table-cell">{formatDate(p.admissionDate)}</td>
+                    <td className="px-5 py-3 text-[#3A3A3C] hidden lg:table-cell">{p.currentSubStatus}</td>
+                    <td className="px-5 py-3 text-[#3A3A3C] hidden xl:table-cell">
                       {p.admissionType === 'Discharged' ? '—' : p.daysAdmitted}
                     </td>
-                    <td className="px-4 py-3 text-slate-600 hidden xl:table-cell">
+                    <td className="px-5 py-3 text-[#3A3A3C] hidden xl:table-cell">
                       {p.nextActionDue === '—' ? '—' : p.nextActionType}
                     </td>
-                    <td className="px-4 py-3"><StatusBadge status={p.status} /></td>
-                    <td className="px-4 py-3">
+                    <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
+                    <td className="px-5 py-3 relative">
                       <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                        <button
-                          onClick={() => onViewPatient(p.id)}
-                          className="p-1.5 rounded text-slate-400 hover:text-[#0D6E6E] hover:bg-teal-50 transition-colors"
-                          title="View"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onViewPatient(p.id)}
-                          className="p-1.5 rounded text-slate-400 hover:text-amber-600 hover:bg-amber-50 transition-colors"
-                          title="Edit"
-                        >
-                          <Pencil className="w-3.5 h-3.5" />
-                        </button>
+                        {swipedRow === p.id ? (
+                          <div className="flex gap-1 animate-fade-in-up">
+                            <button onClick={() => onViewPatient(p.id)} className="p-2 rounded-lg bg-[#007AFF] text-white"><Eye className="w-4 h-4" /></button>
+                            {p.phone && <a href={`tel:${p.phone}`} className="p-2 rounded-lg bg-[#34C759] text-white"><Phone className="w-4 h-4" /></a>}
+                            <button onClick={() => onViewPatient(p.id)} className="p-2 rounded-lg bg-[#5856D6] text-white"><FileText className="w-4 h-4" /></button>
+                          </div>
+                        ) : (
+                          <button onClick={() => onViewPatient(p.id)} className="p-2 rounded-lg text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/8 transition-colors"><Eye className="w-4 h-4" /></button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -158,15 +198,15 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
             </tbody>
           </table>
         </div>
-        <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-          <span className="text-sm text-slate-500">Showing {filtered.length} of {patients.length} patients</span>
+        <div className="px-5 py-3 ios-separator flex items-center justify-between bg-[#F2F2F7]/40">
+          <span className="text-[13px] text-[#8E8E93]">Showing {filtered.length} of {patients.length}</span>
           <div className="flex items-center gap-1">
-            <button className="p-1.5 rounded border border-slate-200 text-slate-400 hover:bg-white disabled:opacity-40" disabled>
-              <ChevronLeft className="w-3.5 h-3.5" />
+            <button className="p-1.5 rounded-lg text-[#8E8E93] hover:bg-[#E5E5EA] disabled:opacity-30" disabled>
+              <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs px-2 py-1 rounded bg-[#0D6E6E] text-white font-medium">1</span>
-            <button className="p-1.5 rounded border border-slate-200 text-slate-400 hover:bg-white disabled:opacity-40" disabled>
-              <ChevronRight className="w-3.5 h-3.5" />
+            <span className="text-[12px] px-2.5 py-1 rounded-lg bg-[#007AFF] text-white font-medium">1</span>
+            <button className="p-1.5 rounded-lg text-[#8E8E93] hover:bg-[#E5E5EA] disabled:opacity-30" disabled>
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>

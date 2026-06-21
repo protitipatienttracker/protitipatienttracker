@@ -7,26 +7,27 @@ import { DOCTORS, type Patient } from '@/lib/data'
 const STEPS = ['Personal Info', 'Admission Type', 'Assessment', 'Review & Submit']
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
+  const pct = ((current + 1) / total) * 100
+  const r = 20
+  const circ = 2 * Math.PI * r
+  const offset = circ * (1 - (current + 1) / total)
   return (
-    <div className="flex items-center gap-0">
-      {STEPS.map((label, i) => (
-        <div key={i} className="flex items-center">
-          <div className={cn(
-            'flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium transition-all',
-            i < current ? 'bg-green-100 text-green-700' :
-            i === current ? 'bg-[#0D6E6E] text-white' :
-            'bg-slate-100 text-slate-400'
-          )}>
-            {i < current ? <CheckCircle2 className="w-3.5 h-3.5" /> :
-              <span className="w-4 h-4 rounded-full border-2 flex items-center justify-center text-[11px] font-bold border-current">
-                {i + 1}
-              </span>
-            }
-            <span className="hidden sm:inline">{label}</span>
-          </div>
-          {i < total - 1 && <div className={cn('w-6 h-px mx-1', i < current ? 'bg-green-300' : 'bg-slate-200')} />}
+    <div className="flex items-center gap-4">
+      <div className="relative w-12 h-12 shrink-0">
+        <svg width="48" height="48" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r={r} fill="none" stroke="#E5E5EA" strokeWidth="4" />
+          <circle cx="24" cy="24" r={r} fill="none" stroke="#007AFF" strokeWidth="4"
+            strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+            transform="rotate(-90 24 24)" className="transition-all duration-500" />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-[12px] font-bold text-[#007AFF]">{current + 1}/{total}</span>
         </div>
-      ))}
+      </div>
+      <div>
+        <p className="text-[15px] font-semibold text-[#000000]">{STEPS[current]}</p>
+        <p className="text-[12px] text-[#8E8E93]">{Math.round(pct)}% complete</p>
+      </div>
     </div>
   )
 }
@@ -34,24 +35,24 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 function Field({ label, required, children, error }: { label: string; required?: boolean; children: React.ReactNode; error?: string }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-700 mb-1.5">
-        {label} {required && <span className="text-red-500">*</span>}
+      <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">
+        {label} {required && <span className="text-[#FF3B30]">*</span>}
       </label>
       {children}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-[12px] text-[#FF3B30]">{error}</p>}
     </div>
   )
 }
 
 function Input({ ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
-    <input {...props} className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#0D6E6E]/30 bg-white" />
+    <input {...props} className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]/40 placeholder-[#C7C7CC]" />
   )
 }
 
 function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
-    <select {...props} className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#0D6E6E]/30 bg-white text-slate-700">
+    <select {...props} className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]/40 text-[#3A3A3C]">
       {children}
     </select>
   )
@@ -92,12 +93,12 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
 
   function validateStep1(): boolean {
     const e: Partial<PersonalInfo> = {}
-    if (!personal.fullName.trim()) e.fullName = 'Full name is required'
-    if (!personal.dob) e.dob = 'Date of birth is required'
-    if (!personal.gender) e.gender = 'Gender is required'
-    if (!personal.emergencyContact.trim()) e.emergencyContact = 'Emergency contact name is required'
-    if (!personal.emergencyPhone.trim()) e.emergencyPhone = 'Emergency contact phone is required'
-    if (!personal.doctor) e.doctor = 'Treating doctor is required'
+    if (!personal.fullName.trim()) e.fullName = 'Required'
+    if (!personal.dob) e.dob = 'Required'
+    if (!personal.gender) e.gender = 'Required'
+    if (!personal.emergencyContact.trim()) e.emergencyContact = 'Required'
+    if (!personal.emergencyPhone.trim()) e.emergencyPhone = 'Required'
+    if (!personal.doctor) e.doctor = 'Required'
     setErrors(e)
     return Object.keys(e).length === 0
   }
@@ -131,7 +132,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
       currentSubStatus: admissionType === 'High Support' ? 'HS ≤30 days' : admissionType === 'Independent' ? 'Independent' : 'Minor',
       daysAdmitted: 0,
       nextActionDue: '',
-      nextActionType: admissionType === 'High Support' ? 'Capacity Assessment' : 'Capacity Assessment',
+      nextActionType: 'Capacity Assessment',
       status: 'On Track',
       assessments: admissionType !== 'Minor' ? [{
         id: `A-${Date.now()}`,
@@ -148,24 +149,24 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
   }
 
   const typeCards = [
-    { type: 'Independent' as const, color: 'border-teal-500 bg-teal-50', icon: '✓', desc: 'Patient has passed capacity assessment and is voluntarily admitted', badge: 'bg-teal-500' },
-    { type: 'High Support' as const, color: 'border-amber-500 bg-amber-50', icon: '!', desc: 'Patient has failed capacity assessment and requires involuntary admission', badge: 'bg-amber-500' },
-    { type: 'Minor' as const, color: 'border-purple-500 bg-purple-50', icon: 'M', desc: 'Patient is under 18 years of age', badge: 'bg-purple-500' },
+    { type: 'Independent' as const, color: 'ring-2 ring-[#007AFF] bg-[#007AFF]/5', icon: '✓', desc: 'Patient has passed capacity assessment', badge: 'bg-[#007AFF]' },
+    { type: 'High Support' as const, color: 'ring-2 ring-[#FF9500] bg-[#FF9500]/5', icon: '!', desc: 'Patient requires involuntary admission', badge: 'bg-[#FF9500]' },
+    { type: 'Minor' as const, color: 'ring-2 ring-[#AF52DE] bg-[#AF52DE]/5', icon: 'M', desc: 'Patient is under 18 years of age', badge: 'bg-[#AF52DE]' },
   ]
 
   return (
-    <div className="p-6 max-w-2xl">
-      <div className="bg-white rounded-xl shadow-[0_1px_3px_rgba(0,0,0,0.08)] border border-slate-100 overflow-hidden">
+    <div className="p-5 sm:p-6 max-w-2xl">
+      <div className="ios-card overflow-hidden">
         {/* Step Indicator */}
-        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50 overflow-x-auto">
+        <div className="px-6 py-5 bg-[#F2F2F7]/60 ios-separator overflow-x-auto">
           <StepIndicator current={step} total={STEPS.length} />
         </div>
 
         <div className="p-6 space-y-5">
-          {/* Step 1: Personal Info */}
+          {/* Step 1 */}
           {step === 0 && (
             <div className="space-y-4">
-              <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2"><User className="w-4 h-4 text-[#0D6E6E]" />Personal Information</h2>
+              <h2 className="text-[14px] font-semibold text-[#000000] flex items-center gap-2"><User className="w-4 h-4 text-[#007AFF]" />Personal Information</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <Field label="Full Name" required error={errors.fullName}>
@@ -174,24 +175,23 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                 </div>
                 <Field label="Date of Birth" required error={errors.dob}>
                   <Input type="date" value={personal.dob} onChange={e => setPersonal(s => ({ ...s, dob: e.target.value }))} />
-                  {personal.dob && <p className="text-xs text-slate-500 mt-1">Age: {calcAge(personal.dob)} years</p>}
+                  {personal.dob && <p className="text-[12px] text-[#8E8E93] mt-1">Age: {calcAge(personal.dob)} years</p>}
                 </Field>
                 <Field label="Gender" required error={errors.gender}>
                   <Select value={personal.gender} onChange={e => setPersonal(s => ({ ...s, gender: e.target.value }))}>
-                    <option value="">Select gender</option>
+                    <option value="">Select</option>
                     <option>Male</option>
                     <option>Female</option>
                     <option>Other</option>
-                    <option>Prefer not to say</option>
                   </Select>
                 </Field>
-                <Field label="Phone Number">
+                <Field label="Phone">
                   <Input value={personal.phone} onChange={e => setPersonal(s => ({ ...s, phone: e.target.value }))} placeholder="+91 XXXXX XXXXX" />
                 </Field>
-                <Field label="Emergency Contact Name" required error={errors.emergencyContact}>
+                <Field label="Emergency Contact" required error={errors.emergencyContact}>
                   <Input value={personal.emergencyContact} onChange={e => setPersonal(s => ({ ...s, emergencyContact: e.target.value }))} placeholder="Contact name" />
                 </Field>
-                <Field label="Emergency Contact Phone" required error={errors.emergencyPhone}>
+                <Field label="Emergency Phone" required error={errors.emergencyPhone}>
                   <Input value={personal.emergencyPhone} onChange={e => setPersonal(s => ({ ...s, emergencyPhone: e.target.value }))} placeholder="+91 XXXXX XXXXX" />
                 </Field>
                 <Field label="Treating Doctor" required error={errors.doctor}>
@@ -203,63 +203,62 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                   <Field label="Address">
                     <textarea value={personal.address} onChange={e => setPersonal(s => ({ ...s, address: e.target.value }))} rows={2}
                       placeholder="Full address"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#0D6E6E]/30 resize-none" />
+                      className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]/40 resize-none placeholder-[#C7C7CC]" />
                   </Field>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Step 2: Admission Type */}
+          {/* Step 2 */}
           {step === 1 && (
             <div className="space-y-4">
-              <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2"><ClipboardList className="w-4 h-4 text-[#0D6E6E]" />Select Admission Type</h2>
+              <h2 className="text-[14px] font-semibold text-[#000000] flex items-center gap-2"><ClipboardList className="w-4 h-4 text-[#007AFF]" />Select Admission Type</h2>
               <div className="grid gap-3">
                 {typeCards.map(card => (
                   <button
                     key={card.type}
                     onClick={() => setAdmissionType(card.type)}
                     className={cn(
-                      'flex items-start gap-4 p-4 rounded-xl border-2 text-left transition-all',
-                      admissionType === card.type ? card.color : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      'flex items-start gap-4 p-4 rounded-2xl text-left transition-all',
+                      admissionType === card.type ? card.color : 'bg-[#F2F2F7] hover:bg-[#E5E5EA]'
                     )}
                   >
-                    <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0', card.badge)}>
+                    <div className={cn('w-8 h-8 rounded-full flex items-center justify-center text-white text-[13px] font-bold shrink-0', card.badge)}>
                       {card.icon}
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-800 text-sm">{card.type} Admission</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{card.desc}</p>
+                      <p className="font-semibold text-[#000000] text-[14px]">{card.type}</p>
+                      <p className="text-[12px] text-[#8E8E93] mt-0.5">{card.desc}</p>
                     </div>
                     <div className="ml-auto shrink-0">
-                      <div className={cn('w-4 h-4 rounded-full border-2 flex items-center justify-center',
-                        admissionType === card.type ? 'border-current' : 'border-slate-300'
+                      <div className={cn('w-5 h-5 rounded-full border-2 flex items-center justify-center',
+                        admissionType === card.type ? 'border-[#007AFF]' : 'border-[#C7C7CC]'
                       )}>
-                        {admissionType === card.type && <div className="w-2 h-2 rounded-full bg-current" />}
+                        {admissionType === card.type && <div className="w-2.5 h-2.5 rounded-full bg-[#007AFF]" />}
                       </div>
                     </div>
                   </button>
                 ))}
               </div>
               {admissionType !== 'Minor' && (
-                <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                  <AlertTriangle className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                  <p className="text-xs text-blue-700">A capacity assessment result must be recorded in Step 3.</p>
+                <div className="flex items-start gap-2.5 p-4 bg-[#007AFF]/8 rounded-2xl">
+                  <AlertTriangle className="w-4 h-4 text-[#007AFF] shrink-0 mt-0.5" />
+                  <p className="text-[12px] text-[#007AFF]">A capacity assessment must be recorded in Step 3.</p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Step 3: Assessment (skipped for Minor) */}
+          {/* Step 3: Assessment */}
           {step === 2 && admissionType !== 'Minor' && (
             <div className="space-y-4">
-              <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2"><Brain className="w-4 h-4 text-[#0D6E6E]" />Capacity Assessment</h2>
+              <h2 className="text-[14px] font-semibold text-[#000000] flex items-center gap-2"><Brain className="w-4 h-4 text-[#007AFF]" />Capacity Assessment</h2>
               {assessmentMismatch && (
-                <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg border border-amber-300">
-                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <p className="text-xs text-amber-700">
-                    The assessment result ({assessment.result}) does not match the selected admission type ({admissionType}).
-                    Please verify before proceeding.
+                <div className="flex items-start gap-2.5 p-4 bg-[#FF9500]/10 rounded-2xl">
+                  <AlertTriangle className="w-4 h-4 text-[#FF9500] shrink-0 mt-0.5" />
+                  <p className="text-[12px] text-[#FF9500]">
+                    Result ({assessment.result}) doesn't match admission type ({admissionType}). Please verify.
                   </p>
                 </div>
               )}
@@ -274,37 +273,37 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                 </Field>
                 <Field label="Result" required>
                   <Select value={assessment.result} onChange={e => setAssessment(s => ({ ...s, result: e.target.value }))}>
-                    <option value="Pass">Pass — Patient has capacity (Independent)</option>
-                    <option value="Fail">Fail — Patient lacks capacity (High Support)</option>
+                    <option value="Pass">Pass — Patient has capacity</option>
+                    <option value="Fail">Fail — Patient lacks capacity</option>
                   </Select>
                 </Field>
                 <Field label="Notes">
                   <textarea value={assessment.notes} onChange={e => setAssessment(s => ({ ...s, notes: e.target.value }))} rows={3}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-[#0D6E6E]/30 resize-none" />
+                    className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]/40 resize-none" />
                 </Field>
               </div>
             </div>
           )}
 
-          {/* Step 3: Minor shortcut */}
+          {/* Step 3: Minor */}
           {step === 2 && admissionType === 'Minor' && (
             <div className="flex flex-col items-center py-8 text-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-purple-100 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-purple-600" />
+              <div className="w-14 h-14 rounded-full bg-[#AF52DE]/10 flex items-center justify-center">
+                <CheckCircle2 className="w-7 h-7 text-[#AF52DE]" />
               </div>
-              <p className="text-sm font-medium text-slate-700">No assessment required</p>
-              <p className="text-xs text-slate-500">Minor admission is based on age criteria only. You can proceed to review.</p>
+              <p className="text-[15px] font-medium text-[#000000]">No assessment required</p>
+              <p className="text-[13px] text-[#8E8E93]">Minor admission is based on age criteria only.</p>
             </div>
           )}
 
           {/* Step 4: Review */}
           {step === 3 && (
             <div className="space-y-4">
-              <h2 className="text-base font-semibold text-slate-700 flex items-center gap-2"><Eye className="w-4 h-4 text-[#0D6E6E]" />Review & Submit</h2>
-              <div className="bg-slate-50 rounded-xl p-4 space-y-3 text-xs">
-                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                  <span className="font-semibold text-slate-800">Personal Information</span>
-                  <button onClick={() => setStep(0)} className="text-[#0D6E6E] hover:underline text-xs">Edit</button>
+              <h2 className="text-[15px] font-semibold text-[#000000] flex items-center gap-2"><Eye className="w-4 h-4 text-[#007AFF]" />Review & Submit</h2>
+              <div className="bg-[#F2F2F7] rounded-2xl p-5 space-y-3 text-[13px]">
+                <div className="flex items-center justify-between pb-2 ios-separator">
+                  <span className="font-semibold text-[#000000]">Personal Information</span>
+                  <button onClick={() => setStep(0)} className="text-[#007AFF] text-[13px] active:opacity-60">Edit</button>
                 </div>
                 {[
                   ['Name', personal.fullName],
@@ -313,31 +312,30 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                   ['Gender', personal.gender],
                   ['Phone', personal.phone || '—'],
                   ['Emergency Contact', personal.emergencyContact],
-                  ['Emergency Phone', personal.emergencyPhone],
-                  ['Treating Doctor', personal.doctor],
+                  ['Doctor', personal.doctor],
                 ].map(([label, value]) => (
-                  <div key={label} className="flex justify-between">
-                    <span className="text-slate-500">{label}</span>
-                    <span className="text-slate-800 font-medium">{value}</span>
+                  <div key={label} className="flex justify-between py-0.5">
+                    <span className="text-[#8E8E93]">{label}</span>
+                    <span className="text-[#000000] font-medium">{value}</span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                  <span className="font-semibold text-slate-800">Admission Type</span>
-                  <button onClick={() => setStep(1)} className="text-[#0D6E6E] hover:underline text-xs">Edit</button>
+                <div className="flex items-center justify-between pt-3 ios-separator">
+                  <span className="font-semibold text-[#000000]">Admission Type</span>
+                  <button onClick={() => setStep(1)} className="text-[#007AFF] text-[13px] active:opacity-60">Edit</button>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Type</span>
-                  <span className="text-slate-800 font-medium">{admissionType}</span>
+                <div className="flex justify-between py-0.5">
+                  <span className="text-[#8E8E93]">Type</span>
+                  <span className="text-[#000000] font-medium">{admissionType}</span>
                 </div>
                 {admissionType !== 'Minor' && (
                   <>
-                    <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                      <span className="font-semibold text-slate-800">Assessment</span>
-                      <button onClick={() => setStep(2)} className="text-[#0D6E6E] hover:underline text-xs">Edit</button>
+                    <div className="flex items-center justify-between pt-3 ios-separator">
+                      <span className="font-semibold text-[#000000]">Assessment</span>
+                      <button onClick={() => setStep(2)} className="text-[#007AFF] text-[13px] active:opacity-60">Edit</button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Result</span>
-                      <span className={cn('font-semibold', assessment.result === 'Pass' ? 'text-green-600' : 'text-red-600')}>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-[#8E8E93]">Result</span>
+                      <span className={cn('font-semibold', assessment.result === 'Pass' ? 'text-[#34C759]' : 'text-[#FF3B30]')}>
                         {assessment.result}
                       </span>
                     </div>
@@ -348,23 +346,23 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
           )}
         </div>
 
-        {/* Navigation Buttons */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between">
+        {/* Navigation */}
+        <div className="px-6 py-4 ios-separator bg-[#F2F2F7]/40 flex justify-between">
           <button
             onClick={prevStep}
             disabled={step === 0}
-            className="px-4 py-2 text-sm border border-slate-200 rounded-lg text-slate-600 hover:bg-white disabled:opacity-40 transition-colors"
+            className="px-5 py-2.5 text-[14px] bg-[#E5E5EA] rounded-xl text-[#3A3A3C] font-medium active:bg-[#D1D1D6] disabled:opacity-30 transition-colors"
           >
             Back
           </button>
           {step < 3 ? (
-            <button onClick={nextStep} className="flex items-center gap-1.5 px-5 py-2 text-sm bg-[#0D6E6E] text-white rounded-lg hover:bg-[#0A5858] transition-colors">
+            <button onClick={nextStep} className="flex items-center gap-1.5 px-5 py-2.5 text-[14px] bg-[#007AFF] text-white rounded-xl font-medium active:opacity-80 transition-opacity">
               Continue <ChevronRight className="w-4 h-4" />
             </button>
           ) : (
-            <button onClick={handleSubmit} className="flex items-center gap-2 px-5 py-2 text-sm bg-[#0D6E6E] text-white rounded-lg hover:bg-[#0A5858] font-medium transition-colors">
+            <button onClick={handleSubmit} className="flex items-center gap-2 px-5 py-2.5 text-[14px] bg-[#007AFF] text-white rounded-xl font-medium active:opacity-80 transition-opacity">
               <CheckCircle2 className="w-4 h-4" />
-              Confirm & Admit Patient
+              Confirm & Admit
             </button>
           )}
         </div>

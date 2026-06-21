@@ -10,20 +10,14 @@ export interface Toast {
   type: ToastType
   title: string
   message?: string
+  action?: { label: string; onClick: () => void }
 }
 
 const icons = {
-  success: <CheckCircle2 className="w-4 h-4 text-green-600" />,
-  error: <AlertCircle className="w-4 h-4 text-red-600" />,
-  warning: <AlertCircle className="w-4 h-4 text-amber-600" />,
-  info: <Info className="w-4 h-4 text-blue-600" />,
-}
-
-const colors = {
-  success: 'border-l-4 border-green-500',
-  error: 'border-l-4 border-red-500',
-  warning: 'border-l-4 border-amber-500',
-  info: 'border-l-4 border-blue-500',
+  success: <CheckCircle2 className="w-5 h-5 text-[#34C759]" />,
+  error: <AlertCircle className="w-5 h-5 text-[#FF3B30]" />,
+  warning: <AlertCircle className="w-5 h-5 text-[#FF9500]" />,
+  info: <Info className="w-5 h-5 text-[#007AFF]" />,
 }
 
 interface ToastItemProps {
@@ -33,18 +27,28 @@ interface ToastItemProps {
 
 function ToastItem({ toast, onDismiss }: ToastItemProps) {
   useEffect(() => {
-    const t = setTimeout(() => onDismiss(toast.id), 4000)
+    const duration = toast.action ? 6000 : 4000
+    const t = setTimeout(() => onDismiss(toast.id), duration)
     return () => clearTimeout(t)
-  }, [toast.id, onDismiss])
+  }, [toast.id, toast.action, onDismiss])
 
   return (
-    <div className={cn('bg-white shadow-lg rounded-lg p-4 flex items-start gap-3 min-w-[320px] max-w-[400px]', colors[toast.type])}>
+    <div className="bg-white rounded-2xl p-4 flex items-start gap-3 min-w-[320px] max-w-[420px] animate-[slideDown_0.3s_ease]"
+      style={{ boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 0.5px rgba(0, 0, 0, 0.04)' }}>
       <span className="mt-0.5 shrink-0">{icons[toast.type]}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-slate-800">{toast.title}</p>
-        {toast.message && <p className="text-xs text-slate-500 mt-0.5">{toast.message}</p>}
+        <p className="text-[14px] font-semibold text-[#000000]">{toast.title}</p>
+        {toast.message && <p className="text-[12px] text-[#8E8E93] mt-0.5">{toast.message}</p>}
+        {toast.action && (
+          <button
+            onClick={() => { toast.action!.onClick(); onDismiss(toast.id) }}
+            className="mt-1.5 text-[13px] font-semibold text-[#007AFF] active:opacity-60"
+          >
+            {toast.action.label}
+          </button>
+        )}
       </div>
-      <button onClick={() => onDismiss(toast.id)} className="shrink-0 text-slate-400 hover:text-slate-600">
+      <button onClick={() => onDismiss(toast.id)} className="shrink-0 text-[#8E8E93] active:text-[#3A3A3C]">
         <X className="w-4 h-4" />
       </button>
     </div>
@@ -54,7 +58,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
 export function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: string) => void }) {
   if (toasts.length === 0) return null
   return (
-    <div className="fixed bottom-6 right-6 z-[9999] flex flex-col gap-2">
+    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-2">
       {toasts.map(t => <ToastItem key={t.id} toast={t} onDismiss={onDismiss} />)}
     </div>
   )
