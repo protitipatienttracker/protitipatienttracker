@@ -44,7 +44,7 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
 
   const overdueRenewals = patients.filter(p =>
     p.admissionType !== 'Discharged' &&
-    (p.nextActionType === 'Contract Renewal' || p.nextActionType === 'Shift to HS >90 days' || p.nextActionType === 'Shift to HS >30 days') &&
+    (p.nextActionType === 'Shift to CHS' || p.nextActionType === 'Shift to HS >90 days' || p.nextActionType === 'Shift to HS >30 days') &&
     p.nextActionDue !== '—' && new Date(p.nextActionDue) <= new Date()
   ).length
 
@@ -104,8 +104,8 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
     >
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5">
-        <img src="/applogo.png" alt="Protiti" className="w-9 h-9 rounded-xl shrink-0" />
-        <span className="text-white font-semibold text-[17px] tracking-tight">Protiti</span>
+        <img src="/applogo.png" alt="Pratiti" className="w-9 h-9 rounded-xl shrink-0" />
+        <span className="text-white font-semibold text-[17px] tracking-tight">Pratiti</span>
         <span className="w-2 h-2 rounded-full bg-[#34C759] ml-auto" title="Online" />
       </div>
 

@@ -60,7 +60,8 @@ function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectEle
 
 interface PersonalInfo {
   fullName: string; dob: string; gender: string; phone: string;
-  emergencyContact: string; emergencyPhone: string; address: string; doctor: string
+  emergencyContact: string; emergencyPhone: string; address: string; doctor: string;
+  admissionDate: string
 }
 
 interface Props {
@@ -79,6 +80,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
     emergencyPhone: prefill?.emergencyPhone ?? '',
     address: prefill?.address ?? '',
     doctor: prefill?.doctor ?? DOCTORS[0],
+    admissionDate: new Date().toISOString().split('T')[0],
   })
   const [admissionType, setAdmissionType] = useState<'Independent' | 'High Support' | 'Minor'>('Independent')
   const [assessment, setAssessment] = useState({ date: new Date().toISOString().split('T')[0], assessedBy: DOCTORS[0], result: 'Pass', notes: '' })
@@ -128,7 +130,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
       treatingDoctor: personal.doctor,
       admittedBy: 'Arjun Sathe',
       admissionType,
-      admissionDate: new Date().toISOString().split('T')[0],
+      admissionDate: personal.admissionDate,
       currentSubStatus: admissionType === 'High Support' ? 'HS ≤30 days' : admissionType === 'Independent' ? 'Independent' : 'Minor',
       daysAdmitted: 0,
       nextActionDue: '',
@@ -198,6 +200,9 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                   <Select value={personal.doctor} onChange={e => setPersonal(s => ({ ...s, doctor: e.target.value }))}>
                     {DOCTORS.map(d => <option key={d}>{d}</option>)}
                   </Select>
+                </Field>
+                <Field label="Admission Date" required>
+                  <Input type="date" value={personal.admissionDate} onChange={e => setPersonal(s => ({ ...s, admissionDate: e.target.value }))} />
                 </Field>
                 <div className="sm:col-span-2">
                   <Field label="Address">

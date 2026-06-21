@@ -335,11 +335,9 @@ export default function Settings({ onAddToast, initialSection }: Props) {
             <div className="space-y-2">
               <h3 className="text-[12px] font-semibold text-[#8E8E93] uppercase tracking-wide">High Support Milestones</h3>
               {[
-                { label: 'Initial Period', range: '0 – 30 days', subCat: 'HS ≤30 days', action: 'Assessment at day 30' },
-                { label: 'Extended 1', range: '31 – 90 days', subCat: 'HS >30 days', action: 'Renewal required' },
-                { label: 'Extended 2', range: '91 – 120 days', subCat: 'HS >90 days', action: 'Reassessment + court review' },
-                { label: 'Extended 3', range: '121 – 180 days', subCat: 'HS >120 days', action: 'Escalation review' },
-                { label: 'Long-term', range: '180+ days', subCat: 'HS >180 days', action: 'Monthly reviews' },
+                { label: 'Initial Period', range: '0 – 30 days', subCat: 'HS ≤30 days', action: 'Capacity assessment at day 30' },
+                { label: 'Extended Period', range: '31 – 120 days (30+90)', subCat: 'HS >30 days', action: 'Renewal required at day 120' },
+                { label: 'Long-term', range: '121+ days', subCat: 'HS >120 days', action: 'Periodic reviews required' },
               ].map(rule => (
                 <div key={rule.subCat} className="flex items-center gap-4 p-4 bg-[#F2F2F7] rounded-xl">
                   <div className="w-1.5 h-8 bg-[#007AFF] rounded-full shrink-0" />

@@ -23,7 +23,7 @@ export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpd
 
   const renewalPatients = patients.filter(p =>
     p.admissionType !== 'Discharged' &&
-    (p.nextActionType === 'Contract Renewal' || p.nextActionType === 'Shift to HS >90 days' || p.nextActionType === 'Shift to HS >30 days')
+    (p.nextActionType === 'Shift to CHS' || p.nextActionType === 'Shift to HS >90 days' || p.nextActionType === 'Shift to HS >30 days')
   )
 
   function getDaysOverdue(dueDate: string): number {

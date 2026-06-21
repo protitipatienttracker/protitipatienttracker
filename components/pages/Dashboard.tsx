@@ -138,7 +138,7 @@ interface Props {
 
 export default function Dashboard({ patients, onNavigate }: Props) {
   const active = patients.filter(p => p.admissionType !== 'Discharged')
-  const renewalsDue = patients.filter(p => p.nextActionType === 'Contract Renewal' && p.admissionType !== 'Discharged')
+  const renewalsDue = patients.filter(p => p.nextActionType === 'Shift to CHS' && p.admissionType !== 'Discharged')
   const assessmentsToday = patients.filter(p => p.nextActionType === 'Capacity Assessment' && (p.status === 'Action Needed' || p.status === 'Due Soon'))
   const beds = 30 - active.length
 

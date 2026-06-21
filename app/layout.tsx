@@ -6,7 +6,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
 
 export const metadata: Metadata = {
-  title: 'Protiti — Patient Admission Management',
+  title: 'Pratiti — Patient Admission Management',
   description: 'Clinical admission management system for mental health rehabilitation centers.',
   generator: 'v0.app',
 }

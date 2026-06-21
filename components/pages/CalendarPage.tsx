@@ -35,7 +35,7 @@ const EVENT_DOT: Record<CalendarEvent['type'], string> = {
 
 const LEGEND = [
   { type: 'overdue' as const, label: 'Overdue' },
-  { type: 'renewal' as const, label: 'Renewal' },
+  { type: 'renewal' as const, label: 'Shift to CHS' },
   { type: 'assessment' as const, label: 'Assessment' },
   { type: 'discharge' as const, label: 'Discharge' },
   { type: 'admission' as const, label: 'Admission' },
@@ -50,7 +50,7 @@ function buildEvents(patients: Patient[]): CalendarEvent[] {
       if (p.dischargeDate) events.push({ id: `disc-${p.id}`, date: p.dischargeDate, patientName: p.name, action: 'Discharged', type: 'discharge' })
     } else {
       if (p.nextActionDue && p.nextActionDue !== '—') {
-        const t = p.nextActionType.includes('Renewal') ? 'renewal'
+        const t = p.nextActionType.includes('Shift') ? 'renewal'
           : p.nextActionType.includes('Assessment') ? 'assessment' : 'assessment'
         events.push({ id: `action-${p.id}`, date: p.nextActionDue, patientName: p.name, action: p.nextActionType, type: t, hour: 10 + (p.id.charCodeAt(3) % 8) })
       }

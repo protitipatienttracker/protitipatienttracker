@@ -240,7 +240,7 @@ export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
     if (admissionType === 'High Support') {
       const renewal = getNextRenewalDate(admissionDate, subCategory)
       nextActionDue = renewal.toISOString().split('T')[0]
-      nextActionType = 'Contract Renewal'
+      nextActionType = 'Shift to CHS'
     } else if (admissionType === 'Independent') {
       const assess = getNextAssessmentDate(admissionDate, lastAssessmentDate)
       nextActionDue = assess.toISOString().split('T')[0]
