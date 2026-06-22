@@ -31,6 +31,18 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
   const [swipedRow, setSwipedRow] = useState<string | null>(null)
   const touchStartX = useRef(0)
 
+  function exportCSV() {
+    const selectedPatients = filtered.filter(p => selected.has(p.id))
+    const headers = ['Patient Code', 'Name', 'Age', 'Gender', 'Type', 'Sub-Status', 'Admission Date', 'Days Admitted', 'Doctor', 'Status']
+    const rows = selectedPatients.map(p => [p.patientCode, p.name, p.age, p.gender, p.admissionType, p.currentSubStatus, p.admissionDate, p.daysAdmitted, p.treatingDoctor, p.status].join(','))
+    const csv = [headers.join(','), ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = `patients-export-${new Date().toISOString().split('T')[0]}.csv`
+    a.click(); URL.revokeObjectURL(url)
+  }
+
   const filtered = patients.filter(p => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.id.toLowerCase().includes(search.toLowerCase())
     const matchType = typeFilter === 'All' || p.admissionType === typeFilter
@@ -99,9 +111,9 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
         <div className="ios-card px-5 py-3 flex items-center justify-between">
           <span className="text-[13px] text-[#000000] font-medium">{selected.size} selected</span>
           <div className="flex gap-2">
-            <button className="px-3 py-2 bg-[#007AFF]/10 text-[#007AFF] rounded-xl text-[12px] font-medium active:opacity-70">Export CSV</button>
-            <button className="px-3 py-2 bg-[#5856D6]/10 text-[#5856D6] rounded-xl text-[12px] font-medium active:opacity-70">Assign Doctor</button>
-            <button className="px-3 py-2 bg-[#FF9500]/10 text-[#FF9500] rounded-xl text-[12px] font-medium active:opacity-70">Send Reminder</button>
+            <button onClick={exportCSV} className="px-3 py-2 bg-[#007AFF]/10 text-[#007AFF] rounded-xl text-[12px] font-medium active:opacity-70">Export CSV</button>
+            <button onClick={() => alert('Assign Doctor: Select patients and choose a doctor to bulk-assign.')} className="px-3 py-2 bg-[#5856D6]/10 text-[#5856D6] rounded-xl text-[12px] font-medium active:opacity-70">Assign Doctor</button>
+            <button onClick={() => alert('Reminders will be sent for ' + selected.size + ' patients.')} className="px-3 py-2 bg-[#FF9500]/10 text-[#FF9500] rounded-xl text-[12px] font-medium active:opacity-70">Send Reminder</button>
           </div>
         </div>
       )}

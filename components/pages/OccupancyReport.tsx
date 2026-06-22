@@ -53,6 +53,58 @@ export default function OccupancyReport({ patients }: Props) {
   }).length
   const avgStay = active.length ? Math.round(active.reduce((a, b) => a + b.daysAdmitted, 0) / active.length) : 0
 
+  function handleExportPDF() {
+    const reportContent = `
+      <html><head><title>Pratiti - Reports & Analytics</title>
+      <style>
+        body { font-family: -apple-system, sans-serif; padding: 40px; color: #000; }
+        h1 { font-size: 22px; margin-bottom: 8px; }
+        h2 { font-size: 16px; margin-top: 24px; color: #3A3A3C; }
+        .subtitle { color: #8E8E93; font-size: 13px; margin-bottom: 24px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 13px; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #E5E5EA; }
+        th { background: #F2F2F7; font-weight: 600; color: #8E8E93; }
+        .stats { display: flex; gap: 16px; margin: 16px 0; }
+        .stat { flex: 1; padding: 16px; border: 1px solid #E5E5EA; border-radius: 12px; text-align: center; }
+        .stat-value { font-size: 24px; font-weight: 700; }
+        .stat-label { font-size: 11px; color: #8E8E93; text-transform: uppercase; margin-bottom: 4px; }
+      </style></head><body>
+      <h1>Pratiti — Reports & Analytics</h1>
+      <p class="subtitle">Generated on ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Active Patients</div><div class="stat-value">${active.length}</div></div>
+        <div class="stat"><div class="stat-label">Admissions This Month</div><div class="stat-value">${thisMonthAdmissions}</div></div>
+        <div class="stat"><div class="stat-label">Total Discharges</div><div class="stat-value">${discharged.length}</div></div>
+        <div class="stat"><div class="stat-label">Avg Stay</div><div class="stat-value">${avgStay}d</div></div>
+        <div class="stat"><div class="stat-label">Occupancy</div><div class="stat-value">${Math.round((active.length / 30) * 100)}%</div></div>
+      </div>
+      <h2>Active Patients by Type</h2>
+      <table>
+        <tr><th>Type</th><th>Count</th><th>% of Total</th></tr>
+        <tr><td>Independent</td><td>${active.filter(p => p.admissionType === 'Independent').length}</td><td>${active.length ? Math.round((active.filter(p => p.admissionType === 'Independent').length / active.length) * 100) : 0}%</td></tr>
+        <tr><td>High Support</td><td>${active.filter(p => p.admissionType === 'High Support').length}</td><td>${active.length ? Math.round((active.filter(p => p.admissionType === 'High Support').length / active.length) * 100) : 0}%</td></tr>
+        <tr><td>Minor</td><td>${active.filter(p => p.admissionType === 'Minor').length}</td><td>${active.length ? Math.round((active.filter(p => p.admissionType === 'Minor').length / active.length) * 100) : 0}%</td></tr>
+      </table>
+      <h2>All Active Patients</h2>
+      <table>
+        <tr><th>Code</th><th>Name</th><th>Type</th><th>Sub-Category</th><th>Days Admitted</th><th>Doctor</th></tr>
+        ${active.map(p => `<tr><td>${p.patientCode}</td><td>${p.name}</td><td>${p.admissionType}</td><td>${p.currentSubStatus}</td><td>${p.daysAdmitted}</td><td>${p.treatingDoctor}</td></tr>`).join('')}
+      </table>
+      <h2>Recently Discharged</h2>
+      <table>
+        <tr><th>Code</th><th>Name</th><th>Discharge Date</th><th>Reason</th><th>Total Stay</th></tr>
+        ${discharged.slice(0, 10).map(p => `<tr><td>${p.patientCode}</td><td>${p.name}</td><td>${p.dischargeDate || '—'}</td><td>${p.dischargeReason || '—'}</td><td>${p.totalStay || '—'}</td></tr>`).join('')}
+      </table>
+      </body></html>
+    `;
+    const win = window.open('', '_blank');
+    if (win) {
+      win.document.write(reportContent);
+      win.document.close();
+      setTimeout(() => { win.print(); }, 500);
+    }
+  }
+
   const barData = buildMonthlyBarData(patients)
   const lineData = buildLineData(patients)
   const avgStayData = buildAvgStayData(patients)
@@ -75,9 +127,9 @@ export default function OccupancyReport({ patients }: Props) {
             </button>
           ))}
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">
+        <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">
           <Download className="w-3.5 h-3.5" />
-          Export
+          Export PDF
         </button>
       </div>
 
