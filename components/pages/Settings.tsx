@@ -206,7 +206,7 @@ export default function Settings({ onAddToast, initialSection }: Props) {
             </div>
             {showAddStaff && (
               <div className="px-6 py-4 ios-separator bg-[#F2F2F7]/60 space-y-3">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div>
                     <label className="block text-[12px] font-medium text-[#3A3A3C] mb-1">Name</label>
                     <input value={newStaff.name} onChange={e => setNewStaff(s => ({ ...s, name: e.target.value }))}

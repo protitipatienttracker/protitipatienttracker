@@ -84,7 +84,7 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
   }
 
   return (
-    <div className="p-5 sm:p-6 space-y-4">
+    <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex gap-0.5 bg-[#E5E5EA] p-0.5 rounded-xl">
           {['Due / Upcoming', 'Completed'].map((t, i) => (

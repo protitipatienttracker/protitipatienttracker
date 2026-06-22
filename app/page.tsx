@@ -274,7 +274,7 @@ export default function Page() {
         </main>
 
         {/* Mobile bottom tab bar */}
-        <div className="fixed bottom-0 left-0 right-0 lg:hidden ios-blur border-t border-[rgba(60,60,67,0.1)] z-30">
+        <div className="fixed bottom-0 left-0 right-0 lg:hidden ios-blur border-t border-[rgba(60,60,67,0.1)] z-30 pb-[env(safe-area-inset-bottom)]">
           <div className="flex items-center justify-around h-[50px] max-w-md mx-auto">
             {bottomTabs.map(tab => (
               <button

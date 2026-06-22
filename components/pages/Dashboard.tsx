@@ -59,40 +59,19 @@ interface StatCardProps {
   value: string | number
   sub: string
   subColor?: string
-  sparkline?: number[]
-  sparkColor?: string
 }
 
-function Sparkline({ data, color = '#007AFF' }: { data: number[]; color?: string }) {
-  const max = Math.max(...data)
-  const min = Math.min(...data)
-  const range = max - min || 1
-  const h = 24
-  const w = 60
-  const points = data.map((v, i) => `${(i / (data.length - 1)) * w},${h - ((v - min) / range) * h}`).join(' ')
-  return (
-    <svg width={w} height={h} className="shrink-0">
-      <polyline points={points} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
-function StatCard({ icon, iconBg, label, value, sub, subColor = 'text-[#8E8E93]', sparkline, sparkColor }: StatCardProps) {
+function StatCard({ icon, iconBg, label, value, sub, subColor = 'text-[#8E8E93]' }: StatCardProps) {
   const animatedValue = useAnimatedNumber(typeof value === 'number' ? value : 0)
   const displayValue = typeof value === 'number' ? animatedValue : value
   return (
-    <div className="ios-card p-5">
-      <div className="flex items-center justify-between mb-3">
-        <p className="text-[13px] font-medium text-[#8E8E93]">{label}</p>
-        <span className={`w-8 h-8 rounded-full flex items-center justify-center ${iconBg}`}>{icon}</span>
+    <div className="ios-card p-4 sm:p-5">
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <p className="text-[12px] sm:text-[13px] font-medium text-[#8E8E93]">{label}</p>
+        <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${iconBg}`}>{icon}</span>
       </div>
-      <div className="flex items-end justify-between gap-2">
-        <div>
-          <p className="text-[28px] font-bold text-[#000000] tracking-tight">{displayValue}</p>
-          <p className={`text-[13px] mt-1 ${subColor}`}>{sub}</p>
-        </div>
-        {sparkline && <Sparkline data={sparkline} color={sparkColor} />}
-      </div>
+      <p className="text-[22px] sm:text-[28px] font-bold text-[#000000] tracking-tight">{displayValue}</p>
+      <p className={`text-[12px] sm:text-[13px] mt-1 ${subColor}`}>{sub}</p>
     </div>
   )
 }
@@ -163,9 +142,9 @@ export default function Dashboard({ patients, onNavigate }: Props) {
   }).length
 
   return (
-    <div className="p-5 sm:p-6 space-y-5">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           icon={<Users className="w-4 h-4 text-[#34C759]" />}
           iconBg="bg-[#34C759]/10"
@@ -173,8 +152,6 @@ export default function Dashboard({ patients, onNavigate }: Props) {
           value={active.length}
           sub={`${recentAdmissions} this week`}
           subColor="text-[#34C759]"
-          sparkline={[active.length - 3, active.length - 2, active.length - 1, active.length, active.length - 1, active.length + 1, active.length]}
-          sparkColor="#34C759"
         />
         <StatCard
           icon={<Clock className="w-4 h-4 text-[#FF9500]" />}
@@ -183,8 +160,6 @@ export default function Dashboard({ patients, onNavigate }: Props) {
           value={renewalsDue.length}
           sub={overdueRenewals > 0 ? `${overdueRenewals} overdue` : 'All on track'}
           subColor={overdueRenewals > 0 ? 'text-[#FF3B30]' : 'text-[#34C759]'}
-          sparkline={[2, 3, renewalsDue.length + 1, renewalsDue.length, renewalsDue.length + 2, renewalsDue.length - 1, renewalsDue.length]}
-          sparkColor="#FF9500"
         />
         <StatCard
           icon={<Brain className="w-4 h-4 text-[#5856D6]" />}
@@ -192,17 +167,13 @@ export default function Dashboard({ patients, onNavigate }: Props) {
           label="Assessments Due"
           value={assessmentsToday.length}
           sub={assessmentsToday[0] ? `Next: ${assessmentsToday[0].name}` : 'None pending'}
-          sparkline={[1, 2, assessmentsToday.length, 3, 2, assessmentsToday.length + 1, assessmentsToday.length]}
-          sparkColor="#5856D6"
         />
         <StatCard
           icon={<BedDouble className="w-4 h-4 text-[#007AFF]" />}
           iconBg="bg-[#007AFF]/10"
           label="Beds Available"
           value={beds}
-          sub="Out of 30 total"
-          sparkline={[beds + 2, beds + 1, beds, beds - 1, beds, beds + 1, beds]}
-          sparkColor="#007AFF"
+          sub={`Out of 30 total`}
         />
       </div>
 

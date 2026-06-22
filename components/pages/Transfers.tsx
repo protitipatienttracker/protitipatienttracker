@@ -47,7 +47,7 @@ export default function Transfers({ transfers, patients, onAddTransfer, onAddToa
   }
 
   return (
-    <div className="p-5 sm:p-6 space-y-4">
+    <div className="p-4 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-[15px] font-semibold text-[#000000]">Transfers ({transfers.length})</h2>
         <button

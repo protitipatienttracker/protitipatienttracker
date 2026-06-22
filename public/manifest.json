@@ -1,0 +1,23 @@
+{
+  "name": "Pratiti — Patient Admission Management",
+  "short_name": "Pratiti",
+  "description": "Clinical admission management for mental health rehabilitation centers",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007AFF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/applogo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/apple-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}

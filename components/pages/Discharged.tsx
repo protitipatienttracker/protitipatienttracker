@@ -35,13 +35,13 @@ export default function Discharged({ patients, onViewPatient, onReadmit, onAddTo
   }
 
   return (
-    <div className="p-5 sm:p-6 space-y-4">
+    <div className="p-4 sm:p-6 space-y-4">
       <div className="flex flex-wrap gap-3 items-center justify-between">
         <div className="flex flex-wrap gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-[9px] w-[14px] h-[14px] text-[#8E8E93]" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search"
-              className="pl-8 pr-3 py-2 bg-[#E5E5EA]/60 rounded-xl text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 w-48 placeholder-[#8E8E93]" />
+              className="pl-8 pr-3 py-2 bg-[#E5E5EA]/60 rounded-xl text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 w-full sm:w-48 placeholder-[#8E8E93]" />
           </div>
           <select value={reasonFilter} onChange={e => setReasonFilter(e.target.value)}
             className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]">

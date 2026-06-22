@@ -132,9 +132,9 @@ button:active {
   animation: highlightFlash 1.5s ease forwards;
 }
 
-/* Min touch target for accessibility */
+/* Min touch target for accessibility - only for primary action buttons */
 @media (max-width: 1023px) {
-  button, a, [role="button"] {
+  .touch-target {
     min-height: 44px;
     min-width: 44px;
   }

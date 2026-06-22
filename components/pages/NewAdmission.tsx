@@ -152,14 +152,14 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
   ]
 
   return (
-    <div className="p-5 sm:p-6 max-w-2xl">
+    <div className="p-4 sm:p-6 max-w-2xl">
       <div className="ios-card overflow-hidden">
         {/* Step Indicator */}
         <div className="px-6 py-5 bg-[#F2F2F7]/60 ios-separator overflow-x-auto">
           <StepIndicator current={step} total={STEPS.length} />
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-4 sm:p-6 space-y-5">
           {/* Step 1 */}
           {step === 0 && (
             <div className="space-y-4">

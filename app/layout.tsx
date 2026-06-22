@@ -14,8 +14,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  maximumScale: 1,
   colorScheme: 'light',
-  themeColor: '#0D6E6E',
+  themeColor: '#007AFF',
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
@@ -25,9 +27,20 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} bg-background`}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+      </head>
       <body className="font-sans antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}`,
+          }}
+        />
       </body>
     </html>
   )

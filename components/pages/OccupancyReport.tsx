@@ -23,9 +23,16 @@ function buildMonthlyBarData(patients: Patient[]) {
 
 function buildLineData(patients: Patient[]) {
   const active = patients.filter(p => p.admissionType !== 'Discharged')
+  // Build real data from admission dates - count active patients at each week
   return Array.from({ length: 12 }, (_, i) => {
     const d = new Date(TODAY); d.setDate(d.getDate() - (11 - i) * 7)
-    return { date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }), 'Active Patients': Math.max(active.length + Math.floor(Math.sin(i * 0.8) * 2), 0) }
+    const dateStr = d.toISOString().split('T')[0]
+    const countAtDate = patients.filter(p => {
+      const admitted = p.admissionDate <= dateStr
+      const notDischarged = !p.dischargeDate || p.dischargeDate > dateStr
+      return admitted && notDischarged && p.admissionType !== 'Discharged'
+    }).length
+    return { date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }), 'Active Patients': countAtDate || active.length }
   })
 }
 
@@ -134,14 +141,14 @@ export default function OccupancyReport({ patients }: Props) {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: 'Admissions', value: thisMonthAdmissions, sub: 'this month' },
           { label: 'Discharges', value: discharged.length, sub: 'all time' },
           { label: 'Avg Stay', value: `${avgStay}d`, sub: 'active patients' },
           { label: 'Occupancy', value: `${active.length}/30`, sub: `${Math.round((active.length / 30) * 100)}%` },
         ].map(s => (
-          <div key={s.label} className="ios-card p-5 text-center">
+          <div key={s.label} className="ios-card p-4 sm:p-5 text-center">
             <p className="text-[12px] font-medium text-[#8E8E93] uppercase tracking-wide mb-2">{s.label}</p>
             <p className="text-[24px] font-bold text-[#000000]">{s.value}</p>
             <p className="text-[12px] text-[#8E8E93] mt-1">{s.sub}</p>

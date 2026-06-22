@@ -253,7 +253,7 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
           ))}
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Overview */}
           {activeTab === 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

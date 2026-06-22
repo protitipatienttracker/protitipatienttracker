@@ -57,23 +57,23 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
   function clearSelection() { setSelected(new Set()); setBulkMode(false) }
 
   return (
-    <div className="p-5 sm:p-6 space-y-4">
+    <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
       {/* Header row */}
-      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="flex flex-wrap gap-2 flex-1">
-          <div className="relative">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap gap-2">
+          <div className="relative flex-1 min-w-[140px]">
             <Search className="absolute left-3 top-[9px] w-[14px] h-[14px] text-[#8E8E93]" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search"
-              className="pl-8 pr-3 py-2 bg-[#E5E5EA]/60 rounded-xl text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 w-56 placeholder-[#8E8E93]"
+              className="w-full pl-8 pr-3 py-2 bg-[#E5E5EA]/60 rounded-xl text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 placeholder-[#8E8E93]"
             />
           </div>
           <select
             value={typeFilter}
             onChange={e => setTypeFilter(e.target.value)}
-            className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]"
+            className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]"
           >
             {['All', 'Independent', 'High Support', 'Minor', 'Discharged'].map(o => (
               <option key={o} value={o}>{o}</option>
@@ -82,38 +82,41 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]"
+            className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]"
           >
             {['All', 'Active', 'Discharged'].map(o => (
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
         </div>
-        <button
-          onClick={onNewAdmission}
-          className="flex items-center gap-2 bg-[#007AFF] text-white px-4 py-2.5 rounded-xl text-[14px] font-medium active:opacity-80 transition-opacity shrink-0"
-        >
-          <UserPlus className="w-4 h-4" />
-          New Admission
-        </button>
-        {!bulkMode ? (
-          <button onClick={() => setBulkMode(true)} className="px-3 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6] shrink-0">Select</button>
-        ) : (
-          <div className="flex gap-2 shrink-0">
-            <button onClick={selectAll} className="px-3 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">All</button>
-            <button onClick={clearSelection} className="px-3 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">Done</button>
-          </div>
-        )}
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={onNewAdmission}
+            className="flex items-center gap-1.5 bg-[#007AFF] text-white px-3 sm:px-4 py-2 rounded-xl text-[13px] font-medium active:opacity-80 shrink-0"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">New Admission</span>
+            <span className="sm:hidden">New</span>
+          </button>
+          {!bulkMode ? (
+            <button onClick={() => setBulkMode(true)} className="px-3 py-2 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6] shrink-0">Select</button>
+          ) : (
+            <div className="flex gap-2 shrink-0">
+              <button onClick={selectAll} className="px-3 py-2 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">All</button>
+              <button onClick={clearSelection} className="px-3 py-2 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">Done</button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Bulk action bar */}
       {bulkMode && selected.size > 0 && (
-        <div className="ios-card px-5 py-3 flex items-center justify-between">
+        <div className="ios-card px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <span className="text-[13px] text-[#000000] font-medium">{selected.size} selected</span>
-          <div className="flex gap-2">
-            <button onClick={exportCSV} className="px-3 py-2 bg-[#007AFF]/10 text-[#007AFF] rounded-xl text-[12px] font-medium active:opacity-70">Export CSV</button>
-            <button onClick={() => alert('Assign Doctor: Select patients and choose a doctor to bulk-assign.')} className="px-3 py-2 bg-[#5856D6]/10 text-[#5856D6] rounded-xl text-[12px] font-medium active:opacity-70">Assign Doctor</button>
-            <button onClick={() => alert('Reminders will be sent for ' + selected.size + ' patients.')} className="px-3 py-2 bg-[#FF9500]/10 text-[#FF9500] rounded-xl text-[12px] font-medium active:opacity-70">Send Reminder</button>
+          <div className="flex flex-wrap gap-2">
+            <button onClick={exportCSV} className="px-3 py-1.5 bg-[#007AFF]/10 text-[#007AFF] rounded-lg text-[12px] font-medium active:opacity-70">Export CSV</button>
+            <button onClick={() => alert('Assign Doctor: Select patients and choose a doctor to bulk-assign.')} className="px-3 py-1.5 bg-[#5856D6]/10 text-[#5856D6] rounded-lg text-[12px] font-medium active:opacity-70">Assign Doctor</button>
+            <button onClick={() => alert('Reminders will be sent for ' + selected.size + ' patients.')} className="px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-lg text-[12px] font-medium active:opacity-70">Reminder</button>
           </div>
         </div>
       )}
