@@ -120,15 +120,15 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
   })
 
   return (
-    <div className="p-5 sm:p-6 flex gap-4 h-full min-h-0">
+    <div className="p-4 sm:p-6 flex flex-col lg:flex-row gap-4 h-full min-h-0">
       <div className="flex-1 min-w-0 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button onClick={prev} className="p-2 rounded-xl bg-[#E5E5EA] active:bg-[#D1D1D6] text-[#3A3A3C]">
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <h2 className="text-[15px] font-semibold text-[#000000] w-44 text-center">
+            <h2 className="text-[14px] sm:text-[15px] font-semibold text-[#000000] w-32 sm:w-44 text-center">
               {view === 'year' ? current.year : `${MONTHS[current.month]} ${current.year}`}
             </h2>
             <button onClick={next} className="p-2 rounded-xl bg-[#E5E5EA] active:bg-[#D1D1D6] text-[#3A3A3C]">
@@ -136,9 +136,9 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
             </button>
           </div>
           <div className="flex gap-0.5 bg-[#E5E5EA] p-0.5 rounded-xl">
-            {(['year', 'month', 'week', 'day'] as ViewMode[]).map(v => (
+            {(['month', 'week', 'day'] as ViewMode[]).map(v => (
               <button key={v} onClick={() => setView(v)}
-                className={cn('px-3 py-2 text-[12px] font-medium rounded-[10px] capitalize transition-colors',
+                className={cn('px-2.5 sm:px-3 py-1.5 sm:py-2 text-[11px] sm:text-[12px] font-medium rounded-[10px] capitalize transition-colors',
                   view === v ? 'bg-white text-[#000000] shadow-sm' : 'text-[#8E8E93]'
                 )}>
                 {v}
@@ -203,7 +203,7 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
             </div>
             <div className="grid grid-cols-7">
               {Array.from({ length: firstDay }, (_, i) => (
-                <div key={`empty-${i}`} className="ios-separator min-h-[100px] bg-[#F2F2F7]/30" />
+                <div key={`empty-${i}`} className="ios-separator min-h-[60px] sm:min-h-[100px] bg-[#F2F2F7]/30" />
               ))}
               {Array.from({ length: totalDays }, (_, i) => {
                 const day = i + 1
@@ -212,7 +212,7 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
                 const isToday = ds === todayStr
                 return (
                   <div key={day}
-                    className={cn('min-h-[100px] ios-separator p-1.5 cursor-pointer transition-colors',
+                    className={cn('min-h-[60px] sm:min-h-[100px] ios-separator p-1 sm:p-1.5 cursor-pointer transition-colors',
                       isToday ? 'bg-[#007AFF]/5' : 'hover:bg-[#F2F2F7]/50'
                     )}
                     onClick={() => setSelectedDate(ds)}>
@@ -298,7 +298,7 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
       </div>
 
       {/* Sidebar */}
-      <div className="w-60 shrink-0 space-y-4">
+      <div className="hidden lg:block w-60 shrink-0 space-y-4">
         <div className="ios-card p-4">
           <h3 className="text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-2">This Month</h3>
           <p className="text-[28px] font-bold text-[#007AFF]">{monthEvents.length}</p>

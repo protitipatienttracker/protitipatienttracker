@@ -132,9 +132,9 @@ export default function Settings({ onAddToast, initialSection }: Props) {
   }
 
   return (
-    <div className="p-5 sm:p-6 flex gap-6">
+    <div className="p-4 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6">
       {/* Left nav */}
-      <div className="w-48 shrink-0 space-y-1">
+      <div className="flex sm:flex-col sm:w-48 shrink-0 gap-1 overflow-x-auto sm:overflow-visible">
         {sections.map(s => (
           <button
             key={s}

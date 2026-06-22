@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ArrowLeft, Edit, LogOut, Plus, CheckCircle2, Brain, Phone, Mail, FileText, ArrowLeftRight } from 'lucide-react'
+import { ArrowLeft, LogOut, Plus, CheckCircle2, Brain, Phone, FileText, ArrowLeftRight } from 'lucide-react'
 import { StatusBadge, AdmissionTypeBadge } from '@/components/ui/badge-status'
 import { Modal } from '@/components/ui/modal'
 import { formatDate, type Patient, type Assessment, type Note, type BillingPeriod } from '@/lib/data'
@@ -189,52 +189,48 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
 
       {/* Header */}
       <div className="ios-card overflow-hidden">
-        <div className="h-20 bg-gradient-to-r from-[#007AFF] to-[#5856D6] relative" />
-        <div className="px-6 pb-5 -mt-8">
-          <div className="flex flex-col sm:flex-row gap-4 items-start">
+        <div className="h-16 sm:h-20 bg-gradient-to-r from-[#007AFF] to-[#5856D6]" />
+        <div className="px-4 sm:px-6 pb-5 -mt-6 sm:-mt-8">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start">
             <Avatar name={patient.name} />
-            <div className="flex-1 min-w-0 pt-2">
+            <div className="flex-1 min-w-0 pt-1 sm:pt-2">
               <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-[20px] font-bold text-[#000000]">{patient.name}</h1>
+                <h1 className="text-[18px] sm:text-[20px] font-bold text-[#000000]">{patient.name}</h1>
                 <AdmissionTypeBadge type={patient.admissionType} />
                 <StatusBadge status={patient.status} />
               </div>
-              <div className="flex flex-wrap gap-3 text-[13px] text-[#8E8E93]">
-                <span className="font-mono">{patient.id}</span>
+              <div className="flex flex-wrap gap-2 sm:gap-3 text-[12px] sm:text-[13px] text-[#8E8E93]">
+                <span className="font-mono text-[11px]">{patient.patientCode}</span>
                 <span>Age {patient.age}</span>
                 <span>{patient.gender}</span>
                 <span>Dr. {patient.treatingDoctor.replace('Dr. ', '')}</span>
               </div>
               {/* Quick Action Chips */}
-              <div className="flex flex-wrap gap-2 mt-3">
+              <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-3">
                 {patient.phone && (
-                  <a href={`tel:${patient.phone}`} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#34C759]/10 text-[#34C759] rounded-full text-[12px] font-medium">
+                  <a href={`tel:${patient.phone}`} className="flex items-center gap-1 px-2.5 py-1.5 bg-[#34C759]/10 text-[#34C759] rounded-full text-[11px] sm:text-[12px] font-medium">
                     <Phone className="w-3 h-3" /> Call
                   </a>
                 )}
-                <button onClick={() => { setShowNoteForm(true); setActiveTab(3) }} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#007AFF]/10 text-[#007AFF] rounded-full text-[12px] font-medium">
-                  <FileText className="w-3 h-3" /> Add Note
+                <button onClick={() => { setShowNoteForm(true); setActiveTab(3) }} className="flex items-center gap-1 px-2.5 py-1.5 bg-[#007AFF]/10 text-[#007AFF] rounded-full text-[11px] sm:text-[12px] font-medium">
+                  <FileText className="w-3 h-3" /> Note
                 </button>
                 {patient.admissionType !== 'Discharged' && (
-                  <button onClick={() => setAssessmentModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#5856D6]/10 text-[#5856D6] rounded-full text-[12px] font-medium">
+                  <button onClick={() => setAssessmentModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-[#5856D6]/10 text-[#5856D6] rounded-full text-[11px] sm:text-[12px] font-medium">
                     <Brain className="w-3 h-3" /> Assessment
                   </button>
                 )}
                 {patient.admissionType !== 'Discharged' && patient.admissionType !== 'Minor' && (
-                  <button onClick={() => setShiftModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-full text-[12px] font-medium">
-                    <ArrowLeftRight className="w-3 h-3" /> Shift Type
+                  <button onClick={() => setShiftModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-full text-[11px] sm:text-[12px] font-medium">
+                    <ArrowLeftRight className="w-3 h-3" /> Shift
                   </button>
                 )}
               </div>
             </div>
-            <div className="flex gap-2 shrink-0">
-              <button className="flex items-center gap-1.5 px-4 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">
-                <Edit className="w-3.5 h-3.5" />
-                Edit
-              </button>
+            <div className="flex gap-2 shrink-0 self-start sm:self-auto">
               {patient.admissionType !== 'Discharged' && (
                 <button onClick={() => setDischargeModal(true)}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-[#FF3B30]/10 rounded-xl text-[13px] text-[#FF3B30] font-medium active:bg-[#FF3B30]/20">
+                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-[#FF3B30]/10 rounded-xl text-[12px] sm:text-[13px] text-[#FF3B30] font-medium active:bg-[#FF3B30]/20">
                   <LogOut className="w-3.5 h-3.5" />
                   Discharge
                 </button>
