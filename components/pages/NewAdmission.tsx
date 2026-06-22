@@ -59,9 +59,8 @@ function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectEle
 }
 
 interface PersonalInfo {
-  fullName: string; dob: string; gender: string; phone: string;
-  emergencyContact: string; emergencyPhone: string; address: string; doctor: string;
-  admissionDate: string
+  fullName: string; dob: string; gender: string; diagnosis: string;
+  address: string; doctor: string; admissionDate: string
 }
 
 interface Props {
@@ -75,9 +74,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
     fullName: prefill?.fullName ?? '',
     dob: prefill?.dob ?? '',
     gender: prefill?.gender ?? '',
-    phone: prefill?.phone ?? '',
-    emergencyContact: prefill?.emergencyContact ?? '',
-    emergencyPhone: prefill?.emergencyPhone ?? '',
+    diagnosis: '',
     address: prefill?.address ?? '',
     doctor: prefill?.doctor ?? DOCTORS[0],
     admissionDate: new Date().toISOString().split('T')[0],
@@ -98,8 +95,6 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
     if (!personal.fullName.trim()) e.fullName = 'Required'
     if (!personal.dob) e.dob = 'Required'
     if (!personal.gender) e.gender = 'Required'
-    if (!personal.emergencyContact.trim()) e.emergencyContact = 'Required'
-    if (!personal.emergencyPhone.trim()) e.emergencyPhone = 'Required'
     if (!personal.doctor) e.doctor = 'Required'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -123,9 +118,9 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
       age,
       gender: personal.gender,
       dob: personal.dob,
-      phone: personal.phone,
-      emergencyContactName: personal.emergencyContact,
-      emergencyContactPhone: personal.emergencyPhone,
+      phone: '',
+      emergencyContactName: '',
+      emergencyContactPhone: '',
       address: personal.address,
       treatingDoctor: personal.doctor,
       admittedBy: 'Arjun Sathe',
@@ -175,7 +170,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                     <Input value={personal.fullName} onChange={e => setPersonal(s => ({ ...s, fullName: e.target.value }))} placeholder="e.g. Rahul Sharma" />
                   </Field>
                 </div>
-                <Field label="Date of Birth" required error={errors.dob}>
+                <Field label="Date of Birth (DD/MM/YYYY)" required error={errors.dob}>
                   <Input type="date" value={personal.dob} onChange={e => setPersonal(s => ({ ...s, dob: e.target.value }))} />
                   {personal.dob && <p className="text-[12px] text-[#8E8E93] mt-1">Age: {calcAge(personal.dob)} years</p>}
                 </Field>
@@ -187,15 +182,13 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                     <option>Other</option>
                   </Select>
                 </Field>
-                <Field label="Phone">
-                  <Input value={personal.phone} onChange={e => setPersonal(s => ({ ...s, phone: e.target.value }))} placeholder="+91 XXXXX XXXXX" />
-                </Field>
-                <Field label="Emergency Contact" required error={errors.emergencyContact}>
-                  <Input value={personal.emergencyContact} onChange={e => setPersonal(s => ({ ...s, emergencyContact: e.target.value }))} placeholder="Contact name" />
-                </Field>
-                <Field label="Emergency Phone" required error={errors.emergencyPhone}>
-                  <Input value={personal.emergencyPhone} onChange={e => setPersonal(s => ({ ...s, emergencyPhone: e.target.value }))} placeholder="+91 XXXXX XXXXX" />
-                </Field>
+                <div className="sm:col-span-2">
+                  <Field label="Diagnosis">
+                    <textarea value={personal.diagnosis} onChange={e => setPersonal(s => ({ ...s, diagnosis: e.target.value }))} rows={2}
+                      placeholder="Primary diagnosis"
+                      className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 focus:border-[#007AFF]/40 resize-none placeholder-[#C7C7CC]" />
+                  </Field>
+                </div>
                 <Field label="Treating Doctor" required error={errors.doctor}>
                   <Select value={personal.doctor} onChange={e => setPersonal(s => ({ ...s, doctor: e.target.value }))}>
                     {DOCTORS.map(d => <option key={d}>{d}</option>)}
@@ -315,9 +308,9 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                   ['DOB', personal.dob],
                   ['Age', calcAge(personal.dob)],
                   ['Gender', personal.gender],
-                  ['Phone', personal.phone || '—'],
-                  ['Emergency Contact', personal.emergencyContact],
+                  ['Diagnosis', personal.diagnosis || '—'],
                   ['Doctor', personal.doctor],
+                  ['Admission Date', personal.admissionDate],
                 ].map(([label, value]) => (
                   <div key={label} className="flex justify-between py-0.5">
                     <span className="text-[#8E8E93]">{label}</span>

@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { ArrowLeft, Edit, LogOut, Plus, CheckCircle2, Brain, Phone, Mail, FileText } from 'lucide-react'
+import { ArrowLeft, Edit, LogOut, Plus, CheckCircle2, Brain, Phone, Mail, FileText, ArrowLeftRight } from 'lucide-react'
 import { StatusBadge, AdmissionTypeBadge } from '@/components/ui/badge-status'
 import { Modal } from '@/components/ui/modal'
 import { formatDate, type Patient, type Assessment, type Note, type BillingPeriod } from '@/lib/data'
@@ -67,13 +67,20 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
   const [activeTab, setActiveTab] = useState(0)
   const [assessmentModal, setAssessmentModal] = useState(false)
   const [dischargeModal, setDischargeModal] = useState(false)
+  const [dischargeDate, setDischargeDate] = useState(new Date().toISOString().split('T')[0])
+  const [dischargeReason, setDischargeReason] = useState('Clinical Decision')
   const [noteText, setNoteText] = useState('')
   const [noteType, setNoteType] = useState<'Clinical' | 'Administrative' | 'Legal'>('Clinical')
+  const [noteDate, setNoteDate] = useState(new Date().toISOString().split('T')[0])
   const [showNoteForm, setShowNoteForm] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
   const [dragIdx, setDragIdx] = useState<number | null>(null)
   const [billingOrder, setBillingOrder] = useState<string[]>(patient.billingPeriods.map(b => b.id))
+  const [shiftModal, setShiftModal] = useState(false)
+  const [shiftDate, setShiftDate] = useState(new Date().toISOString().split('T')[0])
+  const [shiftTo, setShiftTo] = useState<'Independent' | 'High Support'>(patient.admissionType === 'Independent' ? 'High Support' : 'Independent')
+  const [shiftReason, setShiftReason] = useState('')
 
   const [newAssessment, setNewAssessment] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -115,11 +122,10 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
 
   async function handleDischarge() {
     if (!patient.activeAdmissionId) { onAddToast('error', 'No active admission'); return }
-    const today = new Date().toISOString().split('T')[0]
     const admissionId = patient.activeAdmissionId
-    const { error } = await dischargePatient(admissionId, 'Clinical Decision', today)
+    const { error } = await dischargePatient(admissionId, dischargeReason, dischargeDate)
     if (error) { onAddToast('error', 'Failed', error.message); return }
-    await insertNotification({ patient_id: patient.id, type: 'Discharge', message: `${patient.name} discharged.`, due_date: today })
+    await insertNotification({ patient_id: patient.id, type: 'Discharge', message: `${patient.name} discharged.`, due_date: dischargeDate })
     setDischargeModal(false)
     onAddToast('warning', `${patient.name} discharged`, 'Tap Undo within 5 seconds to reverse.', {
       label: 'Undo',
@@ -140,11 +146,26 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
     if (onRefreshPatient) await onRefreshPatient(patient.id)
   }
 
+  async function handleShiftType() {
+    if (!patient.activeAdmissionId || !shiftReason.trim()) { onAddToast('error', 'Please fill reason'); return }
+    const newSub = shiftTo === 'High Support' ? 'HS ≤30 days' : 'Independent'
+    await updateSubCategory(patient.activeAdmissionId, newSub)
+    await insertTransfer({
+      patient_id: patient.id, from_admission_id: patient.activeAdmissionId,
+      to_admission_id: patient.activeAdmissionId, transfer_date: shiftDate,
+      from_type: patient.currentSubStatus, to_type: newSub,
+      reason: shiftReason, triggered_by: 'Arjun Sathe', notes: null,
+    })
+    setShiftModal(false)
+    onAddToast('success', `Shifted to ${shiftTo}`, `Effective ${shiftDate}`)
+    if (onRefreshPatient) await onRefreshPatient(patient.id)
+  }
+
   async function handleAddNote() {
     if (!noteText.trim() || !patient.activeAdmissionId) return
     const { error } = await addClinicalNote({
       patient_id: patient.id, admission_id: patient.activeAdmissionId,
-      note_date: new Date().toISOString().split('T')[0], author: 'Arjun Sathe', note_type: noteType, content: noteText,
+      note_date: noteDate, author: 'Arjun Sathe', note_type: noteType, content: noteText,
     })
     if (error) { onAddToast('error', 'Failed', error.message); return }
     setNoteText(''); setShowNoteForm(false)
@@ -197,6 +218,11 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
                 {patient.admissionType !== 'Discharged' && (
                   <button onClick={() => setAssessmentModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#5856D6]/10 text-[#5856D6] rounded-full text-[12px] font-medium">
                     <Brain className="w-3 h-3" /> Assessment
+                  </button>
+                )}
+                {patient.admissionType !== 'Discharged' && patient.admissionType !== 'Minor' && (
+                  <button onClick={() => setShiftModal(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-full text-[12px] font-medium">
+                    <ArrowLeftRight className="w-3 h-3" /> Shift Type
                   </button>
                 )}
               </div>
@@ -345,7 +371,12 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
           {activeTab === 2 && (
             <div>
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-[15px] font-semibold text-[#000000]">Assessments</h3>
+                <div>
+                  <h3 className="text-[15px] font-semibold text-[#000000]">Assessments</h3>
+                  {patient.assessments.length > 0 && patient.assessments.slice(-1)[0]?.nextDue && (
+                    <p className="text-[13px] text-[#FF9500] font-medium mt-0.5">Next due: {formatDate(patient.assessments.slice(-1)[0].nextDue)}</p>
+                  )}
+                </div>
                 <button onClick={() => setAssessmentModal(true)}
                   className="flex items-center gap-1.5 bg-[#007AFF] text-white px-4 py-2 rounded-xl text-[13px] font-medium active:opacity-80">
                   <Plus className="w-3.5 h-3.5" /> Add
@@ -395,10 +426,14 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
               </div>
               {showNoteForm && (
                 <div className="mb-4 p-5 bg-[#F2F2F7] rounded-2xl space-y-3">
-                  <select value={noteType} onChange={e => setNoteType(e.target.value as any)}
-                    className="bg-white rounded-xl px-4 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
-                    {['Clinical', 'Administrative', 'Legal'].map(t => <option key={t}>{t}</option>)}
-                  </select>
+                  <div className="flex gap-3">
+                    <select value={noteType} onChange={e => setNoteType(e.target.value as any)}
+                      className="bg-white rounded-xl px-4 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
+                      {['Clinical', 'Administrative', 'Legal'].map(t => <option key={t}>{t}</option>)}
+                    </select>
+                    <input type="date" value={noteDate} onChange={e => setNoteDate(e.target.value)}
+                      className="bg-white rounded-xl px-4 py-2.5 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
+                  </div>
                   <textarea value={noteText} onChange={e => setNoteText(e.target.value)} placeholder="Write note..."
                     rows={3} className="w-full bg-white rounded-xl px-4 py-3 text-[14px] resize-none outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
                   <div className="flex justify-end gap-2">
@@ -523,9 +558,55 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
           <div className="p-4 bg-[#FF3B30]/10 rounded-2xl">
             <p className="text-[13px] text-[#FF3B30]">Discharge <strong>{patient.name}</strong>? This cannot be undone.</p>
           </div>
+          <div>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Discharge Date</label>
+            <input type="date" value={dischargeDate} onChange={e => setDischargeDate(e.target.value)}
+              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
+          </div>
+          <div>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Reason</label>
+            <select value={dischargeReason} onChange={e => setDischargeReason(e.target.value)}
+              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
+              <option>Clinical Decision</option>
+              <option>Capacity Regained</option>
+              <option>Voluntary</option>
+            </select>
+          </div>
           <div className="flex justify-end gap-2">
             <button onClick={() => setDischargeModal(false)} className="px-5 py-2.5 text-[14px] bg-[#E5E5EA] rounded-xl active:bg-[#D1D1D6]">Cancel</button>
             <button onClick={handleDischarge} className="px-5 py-2.5 text-[14px] bg-[#FF3B30] text-white rounded-xl font-medium active:opacity-80">Discharge</button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Shift Type Modal */}
+      <Modal open={shiftModal} onClose={() => setShiftModal(false)} title="Shift Admission Type" size="sm">
+        <div className="space-y-4">
+          <div className="bg-[#F2F2F7] rounded-2xl p-4 space-y-2 text-[13px]">
+            <div className="flex justify-between"><span className="text-[#8E8E93]">Current</span><span className="font-semibold text-[#000000]">{patient.admissionType}</span></div>
+            <div className="flex justify-between"><span className="text-[#8E8E93]">Shift to</span><span className="font-semibold text-[#007AFF]">{shiftTo}</span></div>
+          </div>
+          <div>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Shift Date</label>
+            <input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)}
+              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
+          </div>
+          <div>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Shift To</label>
+            <select value={shiftTo} onChange={e => setShiftTo(e.target.value as any)}
+              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
+              <option value="Independent">Independent</option>
+              <option value="High Support">High Support</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Reason</label>
+            <input value={shiftReason} onChange={e => setShiftReason(e.target.value)} placeholder="Reason for shift"
+              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setShiftModal(false)} className="px-5 py-2.5 text-[14px] bg-[#E5E5EA] rounded-xl active:bg-[#D1D1D6]">Cancel</button>
+            <button onClick={handleShiftType} className="px-5 py-2.5 text-[14px] bg-[#007AFF] text-white rounded-xl font-medium active:opacity-80">Confirm Shift</button>
           </div>
         </div>
       </Modal>

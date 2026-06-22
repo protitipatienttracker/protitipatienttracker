@@ -61,7 +61,6 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
       items: [
         { id: 'all-patients', label: 'All Patients', icon: <Users className="w-[18px] h-[18px]" /> },
         { id: 'new-admission', label: 'New Admission', icon: <UserPlus className="w-[18px] h-[18px]" /> },
-        { id: 'renewals-due', label: 'Renewals Due', icon: <Clock className="w-[18px] h-[18px]" />, badge: overdueRenewals || undefined },
         { id: 'transfers', label: 'Transfers', icon: <ArrowLeftRight className="w-[18px] h-[18px]" /> },
         { id: 'discharged', label: 'Discharged', icon: <Archive className="w-[18px] h-[18px]" /> },
       ],
@@ -119,7 +118,7 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setTimeout(() => setSearchFocused(false), 200)}
             placeholder="Search patients..."
-            className="w-full bg-[#2C2C2E] text-white placeholder-[#8E8E93] rounded-xl pl-8 pr-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/50"
+            className="w-full bg-[#2C2C2E] text-white placeholder-[#8E8E93] rounded-xl pl-8 pr-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[#006400]/50"
           />
         </div>
         {/* Search dropdown */}
@@ -131,7 +130,7 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
                 onMouseDown={() => { onViewPatient?.(p.id); setSearchQuery('') }}
                 className="w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-white/8 transition-colors"
               >
-                <div className="w-7 h-7 rounded-full bg-[#007AFF] flex items-center justify-center text-[10px] font-semibold text-white shrink-0">
+                <div className="w-7 h-7 rounded-full bg-[#006400] flex items-center justify-center text-[10px] font-semibold text-white shrink-0">
                   {p.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                 </div>
                 <div className="min-w-0">
@@ -166,7 +165,7 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2 rounded-xl text-[14px] transition-all active:scale-[0.97]',
                       isActive
-                        ? 'bg-[#007AFF] text-white font-medium'
+                        ? 'bg-[#006400] text-white font-medium'
                         : 'text-[#EBEBF5]/80 hover:bg-white/8'
                     )}
                   >
@@ -187,7 +186,7 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
 
       {/* User */}
       <div className="border-t border-white/10 px-4 py-4 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#007AFF] to-[#5856D6] flex items-center justify-center text-white text-xs font-semibold shrink-0">
+        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#006400] to-[#004d00] flex items-center justify-center text-white text-xs font-semibold shrink-0">
           AS
         </div>
         <div className="min-w-0">

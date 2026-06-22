@@ -46,19 +46,19 @@
   --card-foreground: #000000;
   --popover: #FFFFFF;
   --popover-foreground: #000000;
-  --primary: #007AFF;
+  --primary: #006400;
   --primary-foreground: #FFFFFF;
   --secondary: #F2F2F7;
   --secondary-foreground: #3A3A3C;
   --muted: #F2F2F7;
   --muted-foreground: #8E8E93;
-  --accent: #E8F0FE;
-  --accent-foreground: #007AFF;
+  --accent: #E8F5E9;
+  --accent-foreground: #006400;
   --destructive: #FF3B30;
   --border: rgba(60, 60, 67, 0.08);
   --input: rgba(60, 60, 67, 0.08);
-  --ring: #007AFF;
-  --teal: #007AFF;
+  --ring: #006400;
+  --teal: #006400;
   --teal-dark: #1C1C1E;
   --amber: #FF9500;
   --danger: #FF3B30;
@@ -122,7 +122,7 @@ button:active {
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes highlightFlash {
-  0% { background-color: rgba(0, 122, 255, 0.08); }
+  0% { background-color: rgba(0, 100, 0, 0.08); }
   100% { background-color: transparent; }
 }
 .animate-fade-in-up {

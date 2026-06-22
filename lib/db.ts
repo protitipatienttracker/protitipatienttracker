@@ -8,14 +8,20 @@ import type {
 
 export function getNextRenewalDate(admissionDate: string, subCategory: string | null): Date {
   const start = new Date(admissionDate)
-  // High Support milestones:
-  // HS ≤30 days: first 30 days, renewal at day 30
-  // HS >30 days: day 31–120 (30+90=120), renewal at day 120
-  // HS >120 days: beyond day 120, renewal every 60 days
+  // High Support milestones (from admission date):
+  // Initial (HS ≤30 days): day 1–30, renewal at day 30
+  // Extended 1 (HS >30 days): day 31–120, renewal at day 120
+  // Extended 2 (HS >120 days): day 121–240, renewal at day 240
+  // Extended 3 (HS >240 days): day 241–420, renewal at day 420
+  // Long-term (HS >420 days): day 421–600, renewal at day 600
+  // Long-term recurring: every 180 days after
   const milestones: Record<string, number> = {
     'HS ≤30 days': 30,
     'HS >30 days': 120,
-    'HS >120 days': 180,
+    'HS >120 days': 240,
+    'HS >240 days': 420,
+    'HS >420 days': 600,
+    'HS >600 days': 780,
   }
   const days = milestones[subCategory ?? ''] ?? 30
   const renewal = new Date(start)
@@ -44,12 +50,16 @@ export function getDaysAdmitted(admissionDate: string): number {
 export function getSubCategoryFromDays(daysAdmitted: number): string {
   if (daysAdmitted <= 30) return 'HS ≤30 days'
   if (daysAdmitted <= 120) return 'HS >30 days'
-  return 'HS >120 days'
+  if (daysAdmitted <= 240) return 'HS >120 days'
+  if (daysAdmitted <= 420) return 'HS >240 days'
+  if (daysAdmitted <= 600) return 'HS >420 days'
+  return 'HS >600 days'
 }
 
 export function getNextMilestoneSubCategory(current: string | null): string {
-  const order = ['HS ≤30 days', 'HS >30 days', 'HS >120 days']
+  const order = ['HS ≤30 days', 'HS >30 days', 'HS >120 days', 'HS >240 days', 'HS >420 days', 'HS >600 days']
   const idx = order.indexOf(current ?? '')
+  if (idx >= order.length - 1) return 'HS >600 days' // recurring
   return order[Math.min(idx + 1, order.length - 1)]
 }
 
