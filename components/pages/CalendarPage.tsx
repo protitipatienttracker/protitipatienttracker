@@ -43,6 +43,56 @@ const LEGEND = [
 
 const DAY_HOURS = Array.from({ length: 13 }, (_, i) => i + 8)
 
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() + n)
+  return d.toISOString().split('T')[0]
+}
+
+// Generate all scheduled CA reminder dates for a patient based on admission type
+function buildAssessmentReminders(p: Patient): CalendarEvent[] {
+  const events: CalendarEvent[] = []
+  if (p.admissionType === 'Discharged' || p.admissionType === 'Minor') return events
+
+  const admDate = p.admissionDate
+  if (!admDate) return events
+
+  if (p.admissionType === 'High Support' && p.currentSubStatus === 'HS ≤30 days') {
+    // Weekly CAs on day 7, 14, 21, 28
+    for (let week = 1; week <= 4; week++) {
+      const date = addDays(admDate, week * 7)
+      events.push({
+        id: `ca-hs-${p.id}-w${week}`,
+        date,
+        patientName: p.name,
+        action: `CA Due (HS Week ${week})`,
+        type: 'assessment',
+        hour: 10,
+      })
+    }
+  } else if (p.currentSubStatus.startsWith('CHS') || p.admissionType === 'Independent') {
+    // Fortnightly CAs — generate for the next 6 months from today
+    const today = new Date().toISOString().split('T')[0]
+    const lastCA = p.assessments.slice(-1)[0]?.date ?? admDate
+    let next = addDays(lastCA, 14)
+    const limit = addDays(today, 180)
+    let i = 1
+    while (next <= limit) {
+      events.push({
+        id: `ca-chs-${p.id}-${i}`,
+        date: next,
+        patientName: p.name,
+        action: `CA Due (${p.currentSubStatus === 'Independent' ? 'Independent' : p.currentSubStatus})`,
+        type: 'assessment',
+        hour: 10,
+      })
+      next = addDays(next, 14)
+      i++
+    }
+  }
+  return events
+}
+
 function buildEvents(patients: Patient[]): CalendarEvent[] {
   const events: CalendarEvent[] = []
   for (const p of patients) {
@@ -50,15 +100,25 @@ function buildEvents(patients: Patient[]): CalendarEvent[] {
       if (p.dischargeDate) events.push({ id: `disc-${p.id}`, date: p.dischargeDate, patientName: p.name, action: 'Discharged', type: 'discharge' })
     } else {
       if (p.nextActionDue && p.nextActionDue !== '—') {
-        const t = p.nextActionType.includes('Shift') ? 'renewal'
-          : p.nextActionType.includes('Assessment') ? 'assessment' : 'assessment'
+        const t = p.nextActionType.includes('Shift') || p.nextActionType.includes('Renewal') ? 'renewal' : 'assessment'
         events.push({ id: `action-${p.id}`, date: p.nextActionDue, patientName: p.name, action: p.nextActionType, type: t, hour: 10 + (p.id.charCodeAt(3) % 8) })
       }
       if (p.admissionDate) events.push({ id: `adm-${p.id}`, date: p.admissionDate, patientName: p.name, action: 'Admission', type: 'admission', hour: 9 })
+      // Minor: 18th birthday reminder
+      if (p.admissionType === 'Minor' && p.dob) {
+        const dob = new Date(p.dob)
+        const eighteenth = new Date(dob)
+        eighteenth.setFullYear(eighteenth.getFullYear() + 18)
+        const eighteenthStr = eighteenth.toISOString().split('T')[0]
+        events.push({ id: `minor18-${p.id}`, date: eighteenthStr, patientName: p.name, action: 'Turns 18 — CA Required', type: 'assessment', hour: 9 })
+      }
     }
+    // Past recorded assessments
     for (const a of p.assessments) {
       events.push({ id: `asmt-${a.id}`, date: a.date, patientName: p.name, action: `Assessment (${a.result})`, type: 'assessment', hour: 11 })
     }
+    // Upcoming scheduled CA reminders
+    events.push(...buildAssessmentReminders(p))
   }
   return events
 }

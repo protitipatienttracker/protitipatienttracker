@@ -1,5 +1,5 @@
 'use client'
-import { Bell, ChevronRight, Menu } from 'lucide-react'
+import { Bell, ChevronRight, Menu, LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Notification } from '@/lib/data'
 
@@ -34,9 +34,10 @@ interface HeaderProps {
   onNavigate?: (id: string) => void
   onMenuClick?: () => void
   accentColor?: string
+  onSignOut?: () => void
 }
 
-export default function Header({ pageId, breadcrumbs, notifications, onBellClick, onNavigate, onMenuClick, accentColor = '#007AFF' }: HeaderProps) {
+export default function Header({ pageId, breadcrumbs, notifications, onBellClick, onNavigate, onMenuClick, accentColor = '#007AFF', onSignOut }: HeaderProps) {
   const unread = notifications.filter(n => !n.read).length
 
   return (
@@ -80,6 +81,13 @@ export default function Header({ pageId, breadcrumbs, notifications, onBellClick
             <p className="text-[13px] font-medium text-[#000000]">Arjun Sathe</p>
           </div>
 
+          <button
+            onClick={onSignOut}
+            title="Sign out"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors text-[#8E8E93]"
+          >
+            <LogOut className="w-[17px] h-[17px]" />
+          </button>
           <button
             onClick={onBellClick}
             className="relative w-9 h-9 flex items-center justify-center rounded-full bg-[#F2F2F7] active:bg-[#E5E5EA] transition-colors"

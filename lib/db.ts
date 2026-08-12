@@ -6,33 +6,38 @@ import type {
 
 // ─── Business Logic Utilities ────────────────────────────────────────────────
 
+// CHS milestone boundaries (days from original HS admission date)
+// HS ≤30 days  → day 1–30    → must shift to CHS on day 31
+// CHS >30 days → day 31–120  → renewal at day 120
+// CHS >90 days → day 121–240 → renewal at day 240
+// CHS >120 days→ day 241–420 → renewal at day 420
+// CHS >180 days→ day 421–600 → renewal at day 600, then +180 recurring
+const CHS_MILESTONES: Record<string, number> = {
+  'HS ≤30 days':   30,
+  'CHS >30 days':  120,
+  'CHS >90 days':  240,
+  'CHS >120 days': 420,
+  'CHS >180 days': 600,
+}
+
 export function getNextRenewalDate(admissionDate: string, subCategory: string | null): Date {
   const start = new Date(admissionDate)
-  // High Support milestones (from admission date):
-  // Initial (HS ≤30 days): day 1–30, renewal at day 30
-  // Extended 1 (HS >30 days): day 31–120, renewal at day 120
-  // Extended 2 (HS >120 days): day 121–240, renewal at day 240
-  // Extended 3 (HS >240 days): day 241–420, renewal at day 420
-  // Long-term (HS >420 days): day 421–600, renewal at day 600
-  // Long-term recurring: every 180 days after
-  const milestones: Record<string, number> = {
-    'HS ≤30 days': 30,
-    'HS >30 days': 120,
-    'HS >120 days': 240,
-    'HS >240 days': 420,
-    'HS >420 days': 600,
-    'HS >600 days': 780,
-  }
-  const days = milestones[subCategory ?? ''] ?? 30
+  const days = CHS_MILESTONES[subCategory ?? ''] ?? 30
   const renewal = new Date(start)
   renewal.setDate(renewal.getDate() + days)
   return renewal
 }
 
-export function getNextAssessmentDate(admissionDate: string, lastAssessmentDate: string | null): Date {
+// HS (≤30 days): weekly (7 days) | CHS / Independent: fortnightly (14 days)
+export function getNextAssessmentDate(
+  admissionDate: string,
+  lastAssessmentDate: string | null,
+  admissionType?: string,
+  subCategory?: string | null,
+): Date {
   const base = lastAssessmentDate ? new Date(lastAssessmentDate) : new Date(admissionDate)
-  const daysAdmitted = Math.floor((Date.now() - new Date(admissionDate).getTime()) / 86400000)
-  const intervalDays = daysAdmitted <= 30 ? 7 : 14
+  const isHS = admissionType === 'High Support' && (subCategory === 'HS ≤30 days' || !subCategory)
+  const intervalDays = isHS ? 7 : 14
   const next = new Date(base)
   next.setDate(next.getDate() + intervalDays)
   return next
@@ -48,19 +53,18 @@ export function getDaysAdmitted(admissionDate: string): number {
 }
 
 export function getSubCategoryFromDays(daysAdmitted: number): string {
-  if (daysAdmitted <= 30) return 'HS ≤30 days'
-  if (daysAdmitted <= 120) return 'HS >30 days'
-  if (daysAdmitted <= 240) return 'HS >120 days'
-  if (daysAdmitted <= 420) return 'HS >240 days'
-  if (daysAdmitted <= 600) return 'HS >420 days'
-  return 'HS >600 days'
+  if (daysAdmitted <= 30)  return 'HS ≤30 days'
+  if (daysAdmitted <= 120) return 'CHS >30 days'
+  if (daysAdmitted <= 240) return 'CHS >90 days'
+  if (daysAdmitted <= 420) return 'CHS >120 days'
+  return 'CHS >180 days'
 }
 
 export function getNextMilestoneSubCategory(current: string | null): string {
-  const order = ['HS ≤30 days', 'HS >30 days', 'HS >120 days', 'HS >240 days', 'HS >420 days', 'HS >600 days']
+  const order = ['HS ≤30 days', 'CHS >30 days', 'CHS >90 days', 'CHS >120 days', 'CHS >180 days']
   const idx = order.indexOf(current ?? '')
-  if (idx >= order.length - 1) return 'HS >600 days' // recurring
-  return order[Math.min(idx + 1, order.length - 1)]
+  if (idx < 0 || idx >= order.length - 1) return 'CHS >180 days'
+  return order[idx + 1]
 }
 
 export function getNextPatientCode(existingCodes: string[]): string {

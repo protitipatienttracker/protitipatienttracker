@@ -79,8 +79,9 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
   const [billingOrder, setBillingOrder] = useState<string[]>(patient.billingPeriods.map(b => b.id))
   const [shiftModal, setShiftModal] = useState(false)
   const [shiftDate, setShiftDate] = useState(new Date().toISOString().split('T')[0])
-  const [shiftTo, setShiftTo] = useState<'Independent' | 'High Support'>(patient.admissionType === 'Independent' ? 'High Support' : 'Independent')
+  const [shiftTo, setShiftTo] = useState('Independent')
   const [shiftReason, setShiftReason] = useState('')
+  const [shiftDone, setShiftDone] = useState(false)
 
   const [newAssessment, setNewAssessment] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -93,7 +94,7 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
 
   async function handleSaveAssessment() {
     if (!patient.activeAdmissionId) { onAddToast('error', 'No active admission'); return }
-    const nextDue = getNextAssessmentDate(patient.admissionDate, newAssessment.date)
+    const nextDue = getNextAssessmentDate(patient.admissionDate, newAssessment.date, patient.admissionType, patient.currentSubStatus)
     const { error } = await addCapacityAssessment({
       patient_id: patient.id,
       admission_id: patient.activeAdmissionId,
@@ -104,7 +105,7 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
       next_assessment_due: nextDue.toISOString().split('T')[0],
     })
     if (error) { onAddToast('error', 'Failed', error.message); return }
-    if (newAssessment.result === 'Pass' && patient.admissionType === 'High Support') {
+    if (newAssessment.result === 'Pass' && (patient.admissionType === 'High Support' || patient.currentSubStatus.startsWith('CHS'))) {
       await updateSubCategory(patient.activeAdmissionId, 'Independent')
       await insertTransfer({
         patient_id: patient.id, from_admission_id: patient.activeAdmissionId,
@@ -113,6 +114,8 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
         reason: 'Capacity assessment passed', triggered_by: 'System', notes: newAssessment.notes || null,
       })
       onAddToast('success', 'Shifted to Independent')
+    } else if (newAssessment.result === 'Fail' && patient.admissionType === 'Independent') {
+      onAddToast('warning', 'Assessment failed', 'Consider shifting to High Support via the Shift button.')
     } else {
       onAddToast('success', 'Assessment recorded')
     }
@@ -146,9 +149,11 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
     if (onRefreshPatient) await onRefreshPatient(patient.id)
   }
 
+  const CHS_OPTIONS = ['CHS >30 days', 'CHS >90 days', 'CHS >120 days', 'CHS >180 days']
+
   async function handleShiftType() {
     if (!patient.activeAdmissionId || !shiftReason.trim()) { onAddToast('error', 'Please fill reason'); return }
-    const newSub = shiftTo === 'High Support' ? 'HS ≤30 days' : 'Independent'
+    const newSub = shiftTo === 'High Support' ? 'HS ≤30 days' : shiftTo
     await updateSubCategory(patient.activeAdmissionId, newSub)
     await insertTransfer({
       patient_id: patient.id, from_admission_id: patient.activeAdmissionId,
@@ -156,8 +161,13 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
       from_type: patient.currentSubStatus, to_type: newSub,
       reason: shiftReason, triggered_by: 'Arjun Sathe', notes: null,
     })
-    setShiftModal(false)
-    onAddToast('success', `Shifted to ${shiftTo}`, `Effective ${shiftDate}`)
+    setShiftDone(true)
+    setTimeout(() => {
+      setShiftModal(false)
+      setShiftDone(false)
+      setShiftReason('')
+    }, 1200)
+    onAddToast('success', `Shifted to ${newSub}`, `Effective ${shiftDate}`)
     if (onRefreshPatient) await onRefreshPatient(patient.id)
   }
 
@@ -512,10 +522,16 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
       {/* Assessment Modal */}
       <Modal open={assessmentModal} onClose={() => setAssessmentModal(false)} title="Add Assessment">
         <div className="space-y-4">
-          {newAssessment.result === 'Pass' && (
+          {newAssessment.result === 'Pass' && (patient.admissionType === 'High Support' || patient.currentSubStatus.startsWith('CHS')) && (
             <div className="flex items-start gap-2.5 p-4 bg-[#34C759]/10 rounded-2xl">
               <CheckCircle2 className="w-4 h-4 text-[#34C759] mt-0.5 shrink-0" />
-              <p className="text-[12px] text-[#34C759]">Pass triggers a shift to Independent.</p>
+              <p className="text-[12px] text-[#34C759]">Pass will automatically shift this patient to Independent.</p>
+            </div>
+          )}
+          {newAssessment.result === 'Fail' && patient.admissionType === 'Independent' && (
+            <div className="flex items-start gap-2.5 p-4 bg-[#FF9500]/10 rounded-2xl">
+              <CheckCircle2 className="w-4 h-4 text-[#FF9500] mt-0.5 shrink-0" />
+              <p className="text-[12px] text-[#FF9500]">Fail on an Independent patient — use the Shift button to move to High Support.</p>
             </div>
           )}
           <div>
@@ -576,34 +592,51 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
       </Modal>
 
       {/* Shift Type Modal */}
-      <Modal open={shiftModal} onClose={() => setShiftModal(false)} title="Shift Admission Type" size="sm">
+      <Modal open={shiftModal} onClose={() => { setShiftModal(false); setShiftDone(false); setShiftReason('') }} title="Shift Admission Type" size="sm">
         <div className="space-y-4">
-          <div className="bg-[#F2F2F7] rounded-2xl p-4 space-y-2 text-[13px]">
-            <div className="flex justify-between"><span className="text-[#8E8E93]">Current</span><span className="font-semibold text-[#000000]">{patient.admissionType}</span></div>
-            <div className="flex justify-between"><span className="text-[#8E8E93]">Shift to</span><span className="font-semibold text-[#007AFF]">{shiftTo}</span></div>
-          </div>
-          <div>
-            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Shift Date</label>
-            <input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)}
-              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
-          </div>
-          <div>
-            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Shift To</label>
-            <select value={shiftTo} onChange={e => setShiftTo(e.target.value as any)}
-              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
-              <option value="Independent">Independent</option>
-              <option value="High Support">High Support</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Reason</label>
-            <input value={shiftReason} onChange={e => setShiftReason(e.target.value)} placeholder="Reason for shift"
-              className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
-          </div>
-          <div className="flex justify-end gap-2">
-            <button onClick={() => setShiftModal(false)} className="px-5 py-2.5 text-[14px] bg-[#E5E5EA] rounded-xl active:bg-[#D1D1D6]">Cancel</button>
-            <button onClick={handleShiftType} className="px-5 py-2.5 text-[14px] bg-[#007AFF] text-white rounded-xl font-medium active:opacity-80">Confirm Shift</button>
-          </div>
+          {shiftDone ? (
+            <div className="flex flex-col items-center py-6 gap-3">
+              <div className="w-14 h-14 rounded-full bg-[#34C759]/10 flex items-center justify-center">
+                <CheckCircle2 className="w-8 h-8 text-[#34C759]" />
+              </div>
+              <p className="text-[15px] font-semibold text-[#34C759]">Shifted ✓</p>
+              <p className="text-[13px] text-[#8E8E93]">{patient.name} moved to {shiftTo === 'High Support' ? 'HS ≤30 days' : shiftTo}</p>
+            </div>
+          ) : (
+            <>
+              <div className="bg-[#F2F2F7] rounded-2xl p-4 space-y-2 text-[13px]">
+                <div className="flex justify-between"><span className="text-[#8E8E93]">Current</span><span className="font-semibold text-[#000000]">{patient.currentSubStatus}</span></div>
+                <div className="flex justify-between"><span className="text-[#8E8E93]">Shift to</span><span className="font-semibold text-[#007AFF]">{shiftTo === 'High Support' ? 'HS ≤30 days' : shiftTo}</span></div>
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Shift Date</label>
+                <input type="date" value={shiftDate} onChange={e => setShiftDate(e.target.value)}
+                  className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Shift To</label>
+                <select value={shiftTo} onChange={e => setShiftTo(e.target.value)}
+                  className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
+                  <optgroup label="Standard">
+                    <option value="Independent">Independent</option>
+                    <option value="High Support">High Support (HS ≤30 days)</option>
+                  </optgroup>
+                  <optgroup label="Continuous High Support">
+                    {CHS_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                  </optgroup>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Reason</label>
+                <input value={shiftReason} onChange={e => setShiftReason(e.target.value)} placeholder="Reason for shift"
+                  className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => { setShiftModal(false); setShiftReason('') }} className="px-5 py-2.5 text-[14px] bg-[#E5E5EA] rounded-xl active:bg-[#D1D1D6]">Cancel</button>
+                <button onClick={handleShiftType} className="px-5 py-2.5 text-[14px] bg-[#007AFF] text-white rounded-xl font-medium active:opacity-80">Confirm Shift</button>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

@@ -162,8 +162,8 @@ function mapPatientStatus(
     if (daysUntilRenewal <= 3) return 'Due Soon'
     if (daysUntilRenewal <= 7) return 'Upcoming'
   }
-  // Assessment status
-  const nextAssess = getNextAssessmentDate(admissionDate, lastAssessmentDate)
+  // Assessment status (Independent or CHS)
+  const nextAssess = getNextAssessmentDate(admissionDate, lastAssessmentDate, admissionType, subCategory)
   const daysUntilAssess = getDaysUntil(nextAssess)
   if (daysUntilAssess < 0) return 'Action Needed'
   if (daysUntilAssess <= 2) return 'Due Soon'
@@ -240,9 +240,9 @@ export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
     if (admissionType === 'High Support') {
       const renewal = getNextRenewalDate(admissionDate, subCategory)
       nextActionDue = renewal.toISOString().split('T')[0]
-      nextActionType = 'Shift to CHS'
+      nextActionType = subCategory === 'HS ≤30 days' ? 'Shift to CHS' : 'CHS Renewal'
     } else if (admissionType === 'Independent') {
-      const assess = getNextAssessmentDate(admissionDate, lastAssessmentDate)
+      const assess = getNextAssessmentDate(admissionDate, lastAssessmentDate, 'Independent', null)
       nextActionDue = assess.toISOString().split('T')[0]
       nextActionType = 'Capacity Assessment'
     } else if (admissionType === 'Minor') {

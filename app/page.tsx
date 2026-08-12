@@ -1,5 +1,6 @@
 'use client'
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   mapDbPatientToUi, mapDbTransferToUi, mapDbNotificationToUi,
   type Patient, type Transfer, type Notification,
@@ -14,6 +15,7 @@ import {
   undoDischarge,
 } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
+import type { User } from '@supabase/supabase-js'
 import { type Toast, ToastContainer } from '@/components/ui/toast'
 import type { ToastType } from '@/components/ui/toast'
 
@@ -55,6 +57,8 @@ export type PageId =
   | 'notification-preferences'
 
 export default function Page() {
+  const router = useRouter()
+  const [user, setUser] = useState<User | null | undefined>(undefined)
   const [page, setPage] = useState<PageId>('dashboard')
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
   const [patients, setPatients] = useState<Patient[]>([])
@@ -69,6 +73,18 @@ export default function Page() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const mainRef = useRef<HTMLElement>(null)
+
+  // ── Auth
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) { router.replace('/login'); return }
+      setUser(data.session.user)
+    })
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) { router.replace('/login') } else { setUser(session.user) }
+    })
+    return () => subscription.unsubscribe()
+  }, [router])
 
   // ── Notification sound
   const prevUnreadCount = useRef<number>(0)
@@ -207,7 +223,13 @@ export default function Page() {
   }
 
   function renderPage() {
-    if (loading) return (
+    if (user === undefined) return (
+    <div className="flex items-center justify-center h-screen bg-[#F2F2F7]">
+      <div className="w-8 h-8 border-3 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  if (loading) return (
       <div className="flex items-center justify-center h-full">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-3 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
@@ -260,7 +282,7 @@ export default function Page() {
       <Sidebar activePage={page as PageId} onNavigate={navigate} onSearch={setSearchQuery} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} patients={patients} onViewPatient={viewPatient} />
 
       <div className="flex-1 flex flex-col min-w-0">
-        <Header pageId={page} breadcrumbs={getBreadcrumbs()} notifications={notifications} onBellClick={() => setNotifOpen(true)} onNavigate={navigate} onMenuClick={() => setSidebarOpen(true)} accentColor={getPageColor()} />
+        <Header pageId={page} breadcrumbs={getBreadcrumbs()} notifications={notifications} onBellClick={() => setNotifOpen(true)} onNavigate={navigate} onMenuClick={() => setSidebarOpen(true)} accentColor={getPageColor()} onSignOut={async () => { await supabase.auth.signOut(); router.replace('/login') }} />
 
         {/* Pull to refresh indicator */}
         {refreshing && (

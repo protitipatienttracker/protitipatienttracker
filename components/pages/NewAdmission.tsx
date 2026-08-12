@@ -102,6 +102,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
 
   function nextStep() {
     if (step === 0 && !validateStep1()) return
+    if (step === 1) setAssessment(s => ({ ...s, date: personal.admissionDate }))
     setStep(s => Math.min(s + 1, 3))
   }
 
