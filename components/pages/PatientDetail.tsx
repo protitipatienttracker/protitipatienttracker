@@ -1,9 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { ArrowLeft, LogOut, Plus, CheckCircle2, Brain, Phone, FileText, ArrowLeftRight } from 'lucide-react'
+import { ArrowLeft, LogOut, Plus, CheckCircle2, Brain, Phone, FileText, ArrowLeftRight, Clock } from 'lucide-react'
 import { StatusBadge, AdmissionTypeBadge } from '@/components/ui/badge-status'
 import { Modal } from '@/components/ui/modal'
-import { formatDate, type Patient, type Assessment, type Note, type BillingPeriod } from '@/lib/data'
+import { formatDate, type Patient, type Assessment, type Note } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
 function relativeDate(dateStr: string): string {
@@ -18,8 +18,9 @@ function relativeDate(dateStr: string): string {
 }
 import {
   addCapacityAssessment, dischargePatient, addClinicalNote,
-  markBillingPaid, updateSubCategory, insertTransfer, insertNotification,
+  updateSubCategory, insertTransfer, insertNotification,
   getNextAssessmentDate, updatePatientField, undoDischarge,
+  generateHsShiftNotifications,
 } from '@/lib/db'
 
 function Avatar({ name }: { name: string }) {
@@ -61,9 +62,10 @@ interface Props {
   onAddToast: (type: 'success' | 'error' | 'info' | 'warning', title: string, message?: string) => void
   onUpdatePatient: (patient: Patient) => void
   onRefreshPatient?: (patientId: string) => Promise<void>
+  onRefreshData?: () => Promise<void>
 }
 
-export default function PatientDetail({ patient, onBack, onNavigate, onAddToast, onUpdatePatient, onRefreshPatient }: Props) {
+export default function PatientDetail({ patient, onBack, onNavigate, onAddToast, onUpdatePatient, onRefreshPatient, onRefreshData }: Props) {
   const [activeTab, setActiveTab] = useState(0)
   const [assessmentModal, setAssessmentModal] = useState(false)
   const [dischargeModal, setDischargeModal] = useState(false)
@@ -75,8 +77,6 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
   const [showNoteForm, setShowNoteForm] = useState(false)
   const [editingField, setEditingField] = useState<string | null>(null)
   const [editValue, setEditValue] = useState('')
-  const [dragIdx, setDragIdx] = useState<number | null>(null)
-  const [billingOrder, setBillingOrder] = useState<string[]>(patient.billingPeriods.map(b => b.id))
   const [shiftModal, setShiftModal] = useState(false)
   const [shiftDate, setShiftDate] = useState(new Date().toISOString().split('T')[0])
   const [shiftTo, setShiftTo] = useState('Independent')
@@ -90,12 +90,13 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
     notes: '',
   })
 
-  const tabs = ['Overview', 'History', 'Assessments', 'Notes', 'Billing']
+  const tabs = ['Overview', 'History', 'Assessments', 'Notes']
 
   async function handleSaveAssessment() {
     if (!patient.activeAdmissionId) { onAddToast('error', 'No active admission'); return }
+    if (!patient.id) { onAddToast('error', 'Patient ID missing'); return }
     const nextDue = getNextAssessmentDate(patient.admissionDate, newAssessment.date, patient.admissionType, patient.currentSubStatus)
-    const { error } = await addCapacityAssessment({
+    const payload = {
       patient_id: patient.id,
       admission_id: patient.activeAdmissionId,
       assessment_date: newAssessment.date,
@@ -103,8 +104,11 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
       result: newAssessment.result,
       notes: newAssessment.notes || null,
       next_assessment_due: nextDue.toISOString().split('T')[0],
-    })
-    if (error) { onAddToast('error', 'Failed', error.message); return }
+    }
+    const { error } = await addCapacityAssessment(payload)
+    if (error) { onAddToast('error', 'Save failed', error.message); console.error('CA save error:', error, 'payload:', payload); return }
+    // Verify it was actually saved
+    console.log('CA saved successfully, refreshing patient...')
     if (newAssessment.result === 'Pass' && (patient.admissionType === 'High Support' || patient.currentSubStatus.startsWith('CHS'))) {
       await updateSubCategory(patient.activeAdmissionId, 'Independent')
       await insertTransfer({
@@ -115,12 +119,23 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
       })
       onAddToast('success', 'Shifted to Independent')
     } else if (newAssessment.result === 'Fail' && patient.admissionType === 'Independent') {
-      onAddToast('warning', 'Assessment failed', 'Consider shifting to High Support via the Shift button.')
+      // Auto-shift to High Support — patient has lost capacity
+      await updateSubCategory(patient.activeAdmissionId, 'HS ≤30 days')
+      await insertTransfer({
+        patient_id: patient.id, from_admission_id: patient.activeAdmissionId,
+        to_admission_id: patient.activeAdmissionId, transfer_date: newAssessment.date,
+        from_type: 'Independent', to_type: 'HS ≤30 days',
+        reason: 'Capacity lost — failed assessment', triggered_by: 'System', notes: newAssessment.notes || null,
+      })
+      await generateHsShiftNotifications(patient.id, patient.name, patient.patientCode, newAssessment.date)
+      onAddToast('warning', 'Capacity lost', 'Patient shifted to High Support (HS ≤30 days).')
     } else {
       onAddToast('success', 'Assessment recorded')
     }
     setAssessmentModal(false)
+    setNewAssessment(s => ({ ...s, notes: '', result: 'Pass' }))
     if (onRefreshPatient) await onRefreshPatient(patient.id)
+    if (onRefreshData) await onRefreshData()
   }
 
   async function handleDischarge() {
@@ -151,6 +166,20 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
 
   const CHS_OPTIONS = ['CHS >30 days', 'CHS >90 days', 'CHS >120 days', 'CHS >180 days']
 
+  async function handleShiftToCHSFromTimeline(onDate: string, fromSub: string, toSub: string) {
+    if (!patient.activeAdmissionId) return
+    await updateSubCategory(patient.activeAdmissionId, toSub)
+    await insertTransfer({
+      patient_id: patient.id, from_admission_id: patient.activeAdmissionId,
+      to_admission_id: patient.activeAdmissionId, transfer_date: onDate,
+      from_type: fromSub, to_type: toSub,
+      reason: `Milestone shift — ${fromSub} → ${toSub}`, triggered_by: 'System', notes: null,
+    })
+    onAddToast('success', `Shifted to ${toSub}`)
+    if (onRefreshPatient) await onRefreshPatient(patient.id)
+    if (onRefreshData) await onRefreshData()
+  }
+
   async function handleShiftType() {
     if (!patient.activeAdmissionId || !shiftReason.trim()) { onAddToast('error', 'Please fill reason'); return }
     const newSub = shiftTo === 'High Support' ? 'HS ≤30 days' : shiftTo
@@ -162,6 +191,9 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
       reason: shiftReason, triggered_by: 'Arjun Sathe', notes: null,
     })
     setShiftDone(true)
+    if (newSub === 'HS ≤30 days') {
+      await generateHsShiftNotifications(patient.id, patient.name, patient.patientCode, shiftDate)
+    }
     setTimeout(() => {
       setShiftModal(false)
       setShiftDone(false)
@@ -183,12 +215,6 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
     if (onRefreshPatient) await onRefreshPatient(patient.id)
   }
 
-  async function handleMarkBillingPaid(billId: string) {
-    const { error } = await markBillingPaid(billId)
-    if (error) { onAddToast('error', 'Failed', error.message); return }
-    onAddToast('success', 'Marked as paid')
-    if (onRefreshPatient) await onRefreshPatient(patient.id)
-  }
 
   return (
     <div className="p-5 sm:p-6 space-y-4 max-w-5xl">
@@ -199,53 +225,65 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
 
       {/* Header */}
       <div className="ios-card overflow-hidden">
-        <div className="h-16 sm:h-20 bg-gradient-to-r from-[#007AFF] to-[#5856D6]" />
-        <div className="px-4 sm:px-6 pb-5 -mt-6 sm:-mt-8">
-          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start">
-            <Avatar name={patient.name} />
-            <div className="flex-1 min-w-0 pt-1 sm:pt-2">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <h1 className="text-[18px] sm:text-[20px] font-bold text-[#000000]">{patient.name}</h1>
-                <AdmissionTypeBadge type={patient.admissionType} />
-                <StatusBadge status={patient.status} />
-              </div>
-              <div className="flex flex-wrap gap-2 sm:gap-3 text-[12px] sm:text-[13px] text-[#8E8E93]">
-                <span className="font-mono text-[11px]">{patient.patientCode}</span>
-                <span>Age {patient.age}</span>
-                <span>{patient.gender}</span>
-                <span>Dr. {patient.treatingDoctor.replace('Dr. ', '')}</span>
-              </div>
-              {/* Quick Action Chips */}
-              <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2 sm:mt-3">
-                {patient.phone && (
-                  <a href={`tel:${patient.phone}`} className="flex items-center gap-1 px-2.5 py-1.5 bg-[#34C759]/10 text-[#34C759] rounded-full text-[11px] sm:text-[12px] font-medium">
-                    <Phone className="w-3 h-3" /> Call
-                  </a>
-                )}
-                <button onClick={() => { setShowNoteForm(true); setActiveTab(3) }} className="flex items-center gap-1 px-2.5 py-1.5 bg-[#007AFF]/10 text-[#007AFF] rounded-full text-[11px] sm:text-[12px] font-medium">
-                  <FileText className="w-3 h-3" /> Note
-                </button>
-                {patient.admissionType !== 'Discharged' && (
-                  <button onClick={() => setAssessmentModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-[#5856D6]/10 text-[#5856D6] rounded-full text-[11px] sm:text-[12px] font-medium">
-                    <Brain className="w-3 h-3" /> Assessment
-                  </button>
-                )}
-                {patient.admissionType !== 'Discharged' && patient.admissionType !== 'Minor' && (
-                  <button onClick={() => setShiftModal(true)} className="flex items-center gap-1 px-2.5 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-full text-[11px] sm:text-[12px] font-medium">
-                    <ArrowLeftRight className="w-3 h-3" /> Shift
-                  </button>
-                )}
+        <div className="px-4 sm:px-6 pt-5 pb-4">
+
+          {/* Row 1: Avatar + Name + Discharge */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Avatar name={patient.name} />
+              <div>
+                <h1 className="text-[18px] font-bold text-[#000000] leading-tight">{patient.name}</h1>
+                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                  <AdmissionTypeBadge type={patient.currentSubStatus.startsWith('CHS') || patient.currentSubStatus === 'HS ≤30 days' ? patient.currentSubStatus : patient.admissionType} />
+                  <StatusBadge status={patient.status} tooltip={patient.statusReason || undefined} />
+                </div>
               </div>
             </div>
-            <div className="flex gap-2 shrink-0 self-start sm:self-auto">
-              {patient.admissionType !== 'Discharged' && (
-                <button onClick={() => setDischargeModal(true)}
-                  className="flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 bg-[#FF3B30]/10 rounded-xl text-[12px] sm:text-[13px] text-[#FF3B30] font-medium active:bg-[#FF3B30]/20">
-                  <LogOut className="w-3.5 h-3.5" />
-                  Discharge
-                </button>
-              )}
-            </div>
+            {patient.admissionType !== 'Discharged' && (
+              <button onClick={() => setDischargeModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#FF3B30]/10 rounded-xl text-[12px] text-[#FF3B30] font-medium active:bg-[#FF3B30]/20 shrink-0 mb-0.5">
+                <LogOut className="w-3.5 h-3.5" /> Discharge
+              </button>
+            )}
+          </div>
+
+          {/* Row 2: Meta info strip */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 px-1">
+            <span className="text-[12px] text-[#8E8E93] font-mono">{patient.patientCode}</span>
+            <span className="text-[12px] text-[#8E8E93]">Age {patient.age} · {patient.gender}</span>
+            <span className="text-[12px] text-[#8E8E93]">Dr. {patient.treatingDoctor.replace('Dr. ', '')}</span>
+            {patient.admissionDate && (
+              <span className="text-[12px] text-[#8E8E93]">Admitted {formatDate(patient.admissionDate)}</span>
+            )}
+            {patient.daysAdmitted > 0 && (
+              <span className="text-[12px] text-[#8E8E93]">Day {patient.daysAdmitted}</span>
+            )}
+          </div>
+
+          {/* Row 3: Action buttons */}
+          <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[rgba(60,60,67,0.08)]">
+            {patient.phone && (
+              <a href={`tel:${patient.phone}`}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#34C759]/10 text-[#34C759] rounded-xl text-[12px] font-medium">
+                <Phone className="w-3.5 h-3.5" /> Call
+              </a>
+            )}
+            <button onClick={() => { setShowNoteForm(true); setActiveTab(3) }}
+              className="flex items-center gap-1.5 px-3 py-2 bg-[#007AFF]/10 text-[#007AFF] rounded-xl text-[12px] font-medium">
+              <FileText className="w-3.5 h-3.5" /> Add Note
+            </button>
+            {patient.admissionType !== 'Discharged' && (
+              <button onClick={() => setAssessmentModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#5856D6]/10 text-[#5856D6] rounded-xl text-[12px] font-medium">
+                <Brain className="w-3.5 h-3.5" /> Assessment
+              </button>
+            )}
+            {patient.admissionType !== 'Discharged' && patient.admissionType !== 'Minor' && (
+              <button onClick={() => setShiftModal(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-[#FF9500]/10 text-[#FF9500] rounded-xl text-[12px] font-medium">
+                <ArrowLeftRight className="w-3.5 h-3.5" /> Shift Type
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -326,20 +364,194 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
                 <h3 className="text-[12px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-3">Timeline</h3>
                 <div className="relative pl-6">
                   <div className="absolute left-[11px] top-2 bottom-2 w-[2px] bg-[#E5E5EA] rounded-full" />
-                  {[
-                    ...patient.admissionHistory.map(ep => ({ date: ep.startDate, label: `${ep.type} Admission`, sub: ep.subType, color: '#007AFF' })),
-                    ...patient.assessments.map(a => ({ date: a.date, label: `Assessment: ${a.result}`, sub: a.conductedBy, color: a.result === 'Pass' ? '#34C759' : '#FF3B30' })),
-                    ...patient.notes.map(n => ({ date: n.date, label: `Note: ${n.type}`, sub: n.author, color: '#8E8E93' })),
-                    ...patient.billingPeriods.map(b => ({ date: b.from, label: `Billing: ${b.period}`, sub: `₹${b.amount.toLocaleString('en-IN')}`, color: '#FF9500' })),
-                  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8).map((evt, i) => (
-                    <div key={i} className="relative flex items-start gap-3 pb-4">
-                      <div className="absolute left-[-17px] top-1.5 w-3 h-3 rounded-full border-2 border-white" style={{ backgroundColor: evt.color }} />
-                      <div>
-                        <p className="text-[13px] font-medium text-[#000000]">{evt.label}</p>
-                        <p className="text-[11px] text-[#8E8E93]">{evt.sub} · {relativeDate(evt.date)}</p>
-                      </div>
-                    </div>
-                  ))}
+                  {(() => {
+                    const today = new Date().toISOString().split('T')[0]
+
+                    // Deduplicate assessments: keep only the last recorded per date
+                    const dedupedAssessments = Object.values(
+                      patient.assessments.reduce((acc, a) => {
+                        if (!acc[a.date] || a.id > acc[a.date].id) acc[a.date] = a
+                        return acc
+                      }, {} as Record<string, typeof patient.assessments[0]>)
+                    )
+
+                    // Past events — ALL of them, no slice
+                    const past = [
+                      ...patient.admissionHistory.map(ep => ({ date: ep.startDate, label: `${ep.type} Admission`, sub: ep.subType, color: '#007AFF', future: false, key: `adm-${ep.id}` })),
+                      ...dedupedAssessments.map(a => ({ date: a.date, label: `Assessment: ${a.result}`, sub: a.conductedBy, color: a.result === 'Pass' ? '#34C759' : '#FF3B30', future: false, key: `ca-${a.id}` })),
+                      ...patient.notes.map(n => ({ date: n.date, label: `Note: ${n.type}`, sub: n.author, color: '#8E8E93', future: false, key: `note-${n.id}` })),
+                      ...patient.patientTransfers.map(t => ({ date: t.date, label: `Shifted: ${t.fromType} → ${t.toType}`, sub: t.reason || 'Type shift', color: '#AF52DE', future: false, key: `tr-${t.id}` })),
+                    ].filter(e => e.date <= today)
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+
+                    // Upcoming scheduled CAs
+                    const upcoming: { date: string; label: string; sub: string; color: string; future: boolean; milestoneShift?: { from: string; to: string } }[] = []
+                    if (patient.admissionType !== 'Discharged' && patient.admissionType !== 'Minor' && patient.admissionDate) {
+                      const admDate = patient.admissionDate
+                      // hsOriginDate: for milestone boundaries (Day 31, 91, 121, 181 from original HS start)
+                      const hsOrigin = (patient as any).hsOriginDate || admDate
+                      // hsBase: for CA scheduling (from when current sub-category began)
+                      const hsBase = patient.hsStartDate || admDate
+
+                      function addD(d: string, n: number) {
+                        const dt = new Date(d); dt.setDate(dt.getDate() + n); return dt.toISOString().split('T')[0]
+                      }
+
+                      // CHS milestone boundaries — show ALL (past and future)
+                      if (patient.admissionType === 'High Support') {
+                        const milestones: [number, string, string, string][] = [
+                          [30,  'Shift to CHS — Decision Required (Day 31)', 'HS ≤30 days',   'CHS >30 days'],
+                          [90,  'CHS: >30 → >90 days (Day 91)',             'CHS >30 days',  'CHS >90 days'],
+                          [120, 'CHS: >90 → >120 days (Day 121)',           'CHS >90 days',  'CHS >120 days'],
+                          [180, 'CHS: >120 → >180 days (Day 181)',          'CHS >120 days', 'CHS >180 days'],
+                          [361, 'CHS: >180 days renewal (Day 362)',           'CHS >180 days', 'CHS >180 days'],
+                        ]
+                        for (const [day, label, fromSub, toSub] of milestones) {
+                          const d = addD(hsOrigin, day)
+                          const isFuture = d > today
+                          if (!isFuture && patient.patientTransfers.some(t => Math.abs(new Date(t.date).getTime() - new Date(d).getTime()) <= 2 * 86400000)) continue
+                          upcoming.push({ date: d, label, sub: `Day ${day} from HS start (${formatDate(hsOrigin)})`, color: '#FF9500', future: isFuture, milestoneShift: isFuture ? undefined : { from: fromSub, to: toSub } })
+                        }
+                      }
+
+                      if (patient.admissionType === 'High Support' && patient.currentSubStatus === 'HS ≤30 days') {
+                        for (let w = 1; w <= 4; w++) {
+                          const d = addD(hsBase, w * 7)
+                          if (d < hsBase) continue
+                          const slotTime = new Date(d).getTime()
+                          const alreadyRecorded = patient.assessments.some(a => {
+                            const diff = Math.abs(new Date(a.date).getTime() - slotTime)
+                            return diff <= 3 * 86400000
+                          })
+                          if (alreadyRecorded) continue
+                          const isFuture = d > today
+                          upcoming.push({
+                            date: d,
+                            label: `CA Due — HS Week ${w}`,
+                            sub: isFuture ? 'Weekly assessment' : 'Scheduled — not yet recorded',
+                            color: isFuture ? '#5856D6' : '#FF9500',
+                            future: isFuture,
+                          })
+                        }
+                      } else if (patient.currentSubStatus.startsWith('CHS')) {
+                        // Show all fortnightly CAs from hsBase onwards (past unrecorded + future)
+                        const limit = addD(today, 180)
+                        const lastCADate = patient.assessments.slice(-1)[0]?.date ?? hsBase
+                        const effectiveBase = lastCADate > hsBase ? lastCADate : hsBase
+                        // Also generate past missed CAs from hsBase up to effectiveBase
+                        let pastNext = addD(hsBase, 14)
+                        while (pastNext < effectiveBase) {
+                          const slotTime = new Date(pastNext).getTime()
+                          const alreadyRecorded = patient.assessments.some(a => Math.abs(new Date(a.date).getTime() - slotTime) <= 3 * 86400000)
+                          if (!alreadyRecorded) {
+                            upcoming.push({
+                              date: pastNext,
+                              label: `CA Due — ${patient.currentSubStatus}`,
+                              sub: 'Scheduled — not yet recorded',
+                              color: '#FF9500',
+                              future: false,
+                            })
+                          }
+                          pastNext = addD(pastNext, 14)
+                        }
+                        // Future CAs from effectiveBase
+                        let next = addD(effectiveBase, 14)
+                        while (next <= limit) {
+                          const alreadyRecorded = patient.assessments.some(a => {
+                            const diff = Math.abs(new Date(a.date).getTime() - new Date(next).getTime())
+                            return diff <= 3 * 86400000
+                          })
+                          if (!alreadyRecorded) {
+                            const isFuture = next > today
+                            upcoming.push({
+                              date: next,
+                              label: `CA Due — ${patient.currentSubStatus}`,
+                              sub: isFuture ? 'Fortnightly assessment' : 'Scheduled — not yet recorded',
+                              color: isFuture ? '#5856D6' : '#FF9500',
+                              future: isFuture,
+                            })
+                          }
+                          next = addD(next, 14)
+                        }
+                      }
+                    }
+                    const upcomingSorted = upcoming.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+                    const allEvents = [...upcomingSorted.reverse(), ...past]
+
+                    return allEvents.map((evt, i) => { const evtKey = (evt as any).key ?? `evt-${i}`
+                      const daysUntil = Math.floor((new Date(evt.date).getTime() - new Date(today).getTime()) / 86400000)
+                      const timeLabel = evt.future
+                        ? daysUntil === 0 ? 'Today' : `in ${daysUntil}d`
+                        : relativeDate(evt.date)
+                      const isPendingCA = !evt.future && evt.sub.includes('not yet recorded')
+                      const slotTime = new Date(evt.date).getTime()
+                      const alreadyRecordedInDB = patient.assessments.some(a => {
+                        const diff = Math.abs(new Date(a.date).getTime() - slotTime)
+                        return diff <= 3 * 86400000
+                      })
+                      const isDone = alreadyRecordedInDB
+
+                      return (
+                        <div key={evtKey} className={cn('relative flex items-start gap-3 pb-4', evt.future && 'opacity-70')}>
+                          <div
+                            className="absolute left-[-17px] top-1.5 w-3 h-3 rounded-full"
+                            style={{
+                              backgroundColor: evt.future ? 'transparent' : (isDone && isPendingCA ? '#34C759' : evt.color),
+                              border: evt.future ? `2px solid ${evt.color}` : '2px solid white',
+                              boxShadow: evt.future ? `0 0 0 1px ${evt.color}` : 'none',
+                            }}
+                          />
+                          <div className="flex-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5">
+                                {evt.future && <Clock className="w-3 h-3 shrink-0" style={{ color: evt.color }} />}
+                                <p className="text-[13px] font-medium" style={{ color: evt.future ? evt.color : (isDone && isPendingCA ? '#34C759' : '#000000') }}>
+                                  {evt.label}
+                                </p>
+                              </div>
+                              {isPendingCA && (
+                                isDone ? (
+                                  <span className="flex items-center gap-1 px-2 py-0.5 bg-[#34C759]/10 text-[#34C759] rounded-full text-[11px] font-semibold shrink-0">
+                                    <CheckCircle2 className="w-3 h-3" /> Recorded
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => { setNewAssessment(s => ({ ...s, date: evt.date })); setAssessmentModal(true) }}
+                                    className="flex items-center gap-1 px-2.5 py-1 bg-[#FF9500] text-white rounded-full text-[11px] font-semibold shrink-0 active:opacity-80"
+                                  >
+                                    <Plus className="w-3 h-3" /> Record
+                                  </button>
+                                )
+                              )}
+                              {(evt as any).milestoneShift && (() => {
+                                const ms = (evt as any).milestoneShift as { from: string; to: string }
+                                const alreadyShifted = patient.patientTransfers.some(t => t.toType === ms.to)
+                                  || patient.currentSubStatus === ms.to
+                                  || patient.patientTransfers.some(t => {
+                                    const order = ['HS ≤30 days','CHS >30 days','CHS >90 days','CHS >120 days','CHS >180 days']
+                                    return order.indexOf(t.toType) >= order.indexOf(ms.to)
+                                  })
+                                return alreadyShifted ? (
+                                  <span className="flex items-center gap-1 px-2 py-0.5 bg-[#34C759]/10 text-[#34C759] rounded-full text-[11px] font-semibold shrink-0">
+                                    <CheckCircle2 className="w-3 h-3" /> Shifted
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => handleShiftToCHSFromTimeline(evt.date, ms.from, ms.to)}
+                                    className="flex items-center gap-1 px-2.5 py-1 bg-[#FF9500] text-white rounded-full text-[11px] font-semibold shrink-0 active:opacity-80"
+                                  >
+                                    <ArrowLeftRight className="w-3 h-3" /> Shift
+                                  </button>
+                                )
+                              })()}
+                            </div>
+                            <p className="text-[11px] text-[#8E8E93] mt-0.5">{evt.sub} · {formatDate(evt.date)} · {timeLabel}</p>
+                          </div>
+                        </div>
+                      )
+                    })
+                  })()}
                 </div>
               </div>
             </div>
@@ -357,7 +569,9 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
                   </tr>
                 </thead>
                 <tbody>
-                  {patient.admissionHistory.map((ep, i) => (
+                  {patient.admissionHistory.length === 0 ? (
+                    <tr><td colSpan={7} className="text-center py-12 text-[#8E8E93] text-[14px]">No admission history</td></tr>
+                  ) : patient.admissionHistory.map((ep, i) => (
                     <tr key={ep.id} className="ios-separator last:[border-bottom:none]">
                       <td className="px-5 py-3 text-[#8E8E93]">#{i + 1}</td>
                       <td className="px-5 py-3"><AdmissionTypeBadge type={ep.type} /></td>
@@ -378,7 +592,7 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
             <div>
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h3 className="text-[15px] font-semibold text-[#000000]">Assessments</h3>
+                  <h3 className="text-[15px] font-semibold text-[#000000]">Assessments <span className="text-[#8E8E93] font-normal text-[13px]">({patient.assessments.length})</span></h3>
                   {patient.assessments.length > 0 && patient.assessments.slice(-1)[0]?.nextDue && (
                     <p className="text-[13px] text-[#FF9500] font-medium mt-0.5">Next due: {formatDate(patient.assessments.slice(-1)[0].nextDue)}</p>
                   )}
@@ -404,7 +618,7 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
                       </tr>
                     </thead>
                     <tbody>
-                      {patient.assessments.map((a) => (
+                      {[...patient.assessments].reverse().map((a) => (
                         <tr key={a.id} className="ios-separator last:[border-bottom:none]">
                           <td className="px-5 py-3 text-[#3A3A3C]">{formatDate(a.date)}</td>
                           <td className="px-5 py-3 text-[#3A3A3C]">{a.conductedBy}</td>
@@ -469,53 +683,6 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
             </div>
           )}
 
-          {/* Billing */}
-          {activeTab === 4 && (
-            <div className="overflow-x-auto">
-              <table className="w-full text-[13px]">
-                <thead>
-                  <tr className="bg-[#F2F2F7]/60">
-                    {['', 'Period', 'From', 'To', 'Sub-Category', 'Amount', 'Status', ''].map(h => (
-                      <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {(billingOrder.map(id => patient.billingPeriods.find(b => b.id === id)).filter(Boolean) as typeof patient.billingPeriods).map((b, i) => (
-                    <tr
-                      key={b.id}
-                      draggable
-                      onDragStart={() => setDragIdx(i)}
-                      onDragOver={e => e.preventDefault()}
-                      onDrop={() => {
-                        if (dragIdx === null) return
-                        const newOrder = [...billingOrder]
-                        const [moved] = newOrder.splice(dragIdx, 1)
-                        newOrder.splice(i, 0, moved)
-                        setBillingOrder(newOrder)
-                        setDragIdx(null)
-                      }}
-                      className={cn('ios-separator last:[border-bottom:none] transition-all', dragIdx === i && 'opacity-50')}
-                    >
-                      <td className="px-5 py-3 cursor-grab active:cursor-grabbing text-[#C7C7CC]">⠿</td>
-                      <td className="px-5 py-3 font-medium text-[#000000]">{b.period}</td>
-                      <td className="px-5 py-3 text-[#3A3A3C]">{formatDate(b.from)}</td>
-                      <td className="px-5 py-3 text-[#3A3A3C]">{formatDate(b.to)}</td>
-                      <td className="px-5 py-3 text-[#3A3A3C]">{b.subCategory}</td>
-                      <td className="px-5 py-3 font-semibold text-[#000000]">₹{b.amount.toLocaleString('en-IN')}</td>
-                      <td className="px-5 py-3"><StatusBadge status={b.status} /></td>
-                      <td className="px-5 py-3">
-                        {b.status === 'Pending' && (
-                          <button onClick={() => handleMarkBillingPaid(b.id)}
-                            className="text-[13px] text-[#007AFF] font-medium active:opacity-60">Mark Paid</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
       </div>
 
@@ -529,9 +696,9 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
             </div>
           )}
           {newAssessment.result === 'Fail' && patient.admissionType === 'Independent' && (
-            <div className="flex items-start gap-2.5 p-4 bg-[#FF9500]/10 rounded-2xl">
-              <CheckCircle2 className="w-4 h-4 text-[#FF9500] mt-0.5 shrink-0" />
-              <p className="text-[12px] text-[#FF9500]">Fail on an Independent patient — use the Shift button to move to High Support.</p>
+            <div className="flex items-start gap-2.5 p-4 bg-[#FF3B30]/10 rounded-2xl">
+              <CheckCircle2 className="w-4 h-4 text-[#FF3B30] mt-0.5 shrink-0" />
+              <p className="text-[12px] text-[#FF3B30]">Fail — patient has lost capacity. This will shift them to High Support.</p>
             </div>
           )}
           <div>

@@ -8,11 +8,12 @@ import {
 import {
   fetchAllPatients, fetchTransfers, fetchNotifications,
   fetchPatientById, admitNewPatient, addCapacityAssessment,
-  dischargePatient, addClinicalNote, addBillingPeriod,
-  markBillingPaid, insertTransfer, insertNotification,
+  dischargePatient, addClinicalNote,
+  insertTransfer, insertNotification,
   markNotificationRead, markAllNotificationsRead,
   fetchAllPatientCodes, getNextPatientCode, calcAge,
-  undoDischarge,
+  undoDischarge, generateAdmissionNotifications, getReadmissionSubCategory,
+  getNextAssessmentDate,
 } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
@@ -59,8 +60,34 @@ export type PageId =
 export default function Page() {
   const router = useRouter()
   const [user, setUser] = useState<User | null | undefined>(undefined)
+
+  // ── Persist page + patient across refreshes via localStorage
   const [page, setPage] = useState<PageId>('dashboard')
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null)
+
+  // ── Active facility
+  const FACILITIES = ['Pratiti', 'Pratiti Elder Care LLP'] as const
+  const [facility, setFacility] = useState<string>('Pratiti')
+
+  // Restore persisted state from localStorage after mount (client-only)
+  useEffect(() => {
+    const savedPage = localStorage.getItem('pratiti_page') as PageId | null
+    const savedPatient = localStorage.getItem('pratiti_patient')
+    const savedFacility = localStorage.getItem('pratiti_facility')
+    if (savedPage) setPage(savedPage)
+    if (savedPatient) setSelectedPatientId(savedPatient)
+    if (savedFacility) setFacility(savedFacility)
+  }, [])
+
+  function switchFacility(f: string) {
+    setFacility(f)
+    localStorage.setItem('pratiti_facility', f)
+    // reset to dashboard and clear patient when switching
+    setPage('dashboard')
+    setSelectedPatientId(null)
+    localStorage.setItem('pratiti_page', 'dashboard')
+    localStorage.removeItem('pratiti_patient')
+  }
   const [patients, setPatients] = useState<Patient[]>([])
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -110,7 +137,7 @@ export default function Page() {
   const loadData = useCallback(async () => {
     setLoading(true); setError(null)
     try {
-      const [pRes, tRes, nRes] = await Promise.all([fetchAllPatients(), fetchTransfers(), fetchNotifications()])
+      const [pRes, tRes, nRes] = await Promise.all([fetchAllPatients(facility), fetchTransfers(), fetchNotifications()])
       if (pRes.error) throw new Error(pRes.error.message)
       if (pRes.data) setPatients(pRes.data.map(mapDbPatientToUi))
       if (tRes.data) setTransfers(tRes.data.map(mapDbTransferToUi))
@@ -118,7 +145,7 @@ export default function Page() {
     } catch (e: any) {
       setError(e?.message ?? 'Something went wrong.')
     } finally { setLoading(false) }
-  }, [])
+  }, [facility])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -151,10 +178,24 @@ export default function Page() {
     return () => { el.removeEventListener('touchstart', onTouchStart); el.removeEventListener('touchend', onTouchEnd) }
   }, [loadData])
 
+  const [patientDetailLoading, setPatientDetailLoading] = useState(false)
+
   const refreshPatient = useCallback(async (patientId: string) => {
     const { data } = await fetchPatientById(patientId)
-    if (data) setPatients(prev => prev.map(p => p.id === patientId ? mapDbPatientToUi(data) : p))
-  }, [])
+    if (data) {
+      const mapped = mapDbPatientToUi(data)
+      setPatients(prev => prev.map(p => p.id === patientId ? mapped : p))
+    }
+  }, []) // setPatients is stable, mapDbPatientToUi is module-level
+
+  // On mount, if restoring to patient-detail, fetch full detail
+  useEffect(() => {
+    const storedPage = localStorage.getItem('pratiti_page')
+    const storedPatient = localStorage.getItem('pratiti_patient')
+    if (storedPage === 'patient-detail' && storedPatient) {
+      refreshPatient(storedPatient)
+    }
+  }, [refreshPatient])
 
   // ── Toast with action support
   const addToast = useCallback((type: ToastType, title: string, message?: string, action?: { label: string; onClick: () => void }) => {
@@ -164,24 +205,70 @@ export default function Page() {
   const dismissToast = useCallback((id: string) => { setToasts(prev => prev.filter(t => t.id !== id)) }, [])
 
   // ── Navigation
-  function navigate(p: string) { setPage(p as PageId); if (p !== 'patient-detail') setSelectedPatientId(null); setSidebarOpen(false) }
-  function viewPatient(id: string) { setSelectedPatientId(id); setPage('patient-detail') }
+  function navigate(p: string) {
+    setPage(p as PageId)
+    localStorage.setItem('pratiti_page', p)
+    if (p !== 'patient-detail') {
+      setSelectedPatientId(null)
+      localStorage.removeItem('pratiti_patient')
+    }
+    setSidebarOpen(false)
+  }
+  function viewPatient(id: string) {
+    setSelectedPatientId(id)
+    setPage('patient-detail')
+    localStorage.setItem('pratiti_patient', id)
+    localStorage.setItem('pratiti_page', 'patient-detail')
+    // Fetch full patient detail (with assessments, transfers, notes)
+    setPatientDetailLoading(true)
+    refreshPatient(id).finally(() => setPatientDetailLoading(false))
+  }
 
   // ── Admission
   async function handleNewAdmission(partial: Partial<Patient>) {
-    const codes = await fetchAllPatientCodes()
+    const codes = await fetchAllPatientCodes(facility)
     const patientCode = getNextPatientCode(codes)
     const admissionDate = partial.admissionDate ?? new Date().toISOString().split('T')[0]
-    const subCategory = partial.currentSubStatus ?? null
+    // Apply re-admission rule for HS patients
+    let subCategory = partial.currentSubStatus ?? null
+    if (
+      (partial.admissionType === 'High Support' || subCategory?.startsWith('CHS') || subCategory === 'HS ≤30 days') &&
+      readmitPrefill?.lastDischargeDate
+    ) {
+      subCategory = getReadmissionSubCategory(
+        readmitPrefill.lastDischargeDate,
+        readmitPrefill.lastSubCategory ?? null,
+      )
+    }
     const { patient: newPatient, admission, error } = await admitNewPatient(
-      { patient_code: patientCode, full_name: partial.name ?? '', date_of_birth: partial.dob ?? '', gender: partial.gender ?? '', phone: partial.phone ?? null, emergency_contact_name: partial.emergencyContactName ?? null, emergency_contact_phone: partial.emergencyContactPhone ?? null, address: partial.address ?? null, treating_doctor: partial.treatingDoctor ?? null },
+      { patient_code: patientCode, full_name: partial.name ?? '', date_of_birth: partial.dob ?? '', gender: partial.gender ?? '', phone: partial.phone ?? null, emergency_contact_name: partial.emergencyContactName ?? null, emergency_contact_phone: partial.emergencyContactPhone ?? null, address: partial.address ?? null, treating_doctor: partial.treatingDoctor ?? null, facility },
       { admission_type: (partial.admissionType === 'Discharged' ? 'Independent' : partial.admissionType) ?? 'Independent', sub_category: subCategory, admission_date: admissionDate, discharge_date: null, discharge_reason: null, status: 'Active', admitted_by: partial.admittedBy ?? null, notes: null }
     )
     if (error || !newPatient) { addToast('error', 'Admission failed', error?.message ?? 'Unknown error'); return }
-    const billingEnd = new Date(admissionDate); billingEnd.setDate(billingEnd.getDate() + 30)
-    await addBillingPeriod({ patient_id: newPatient.id, admission_id: admission?.id ?? '', period_label: 'Period 1', from_date: admissionDate, to_date: billingEnd.toISOString().split('T')[0], sub_category: subCategory, amount: 30000, status: 'Pending' })
-    const assessmentDue = new Date(admissionDate); assessmentDue.setDate(assessmentDue.getDate() + 7)
-    await insertNotification({ patient_id: newPatient.id, type: 'Assessment Due', message: `First capacity assessment due for ${partial.name} (${patientCode})`, due_date: assessmentDue.toISOString().split('T')[0] })
+
+    // Save the admission-time capacity assessment if provided
+    const ca = (partial as any)._admissionAssessment
+    if (ca && admission) {
+      const nextDue = getNextAssessmentDate(admissionDate, ca.date, partial.admissionType, partial.currentSubStatus)
+      await addCapacityAssessment({
+        patient_id: newPatient.id,
+        admission_id: admission.id,
+        assessment_date: ca.date,
+        assessed_by: ca.assessedBy,
+        result: ca.result,
+        notes: ca.notes || null,
+        next_assessment_due: nextDue.toISOString().split('T')[0],
+      })
+    }
+
+    await generateAdmissionNotifications(
+      newPatient.id,
+      partial.name ?? '',
+      patientCode,
+      (partial.admissionType === 'Discharged' ? 'Independent' : partial.admissionType) ?? 'Independent',
+      admissionDate,
+      partial.dob,
+    )
     addToast('success', 'Patient admitted', `${partial.name} (${patientCode})`)
     setReadmitPrefill(undefined); await loadData(); setPage('all-patients')
   }
@@ -189,7 +276,14 @@ export default function Page() {
   function updatePatient(updated: Patient) { setPatients(prev => prev.map(p => p.id === updated.id ? updated : p)) }
 
   function handleReadmit(p: Patient) {
-    setReadmitPrefill({ fullName: p.name, dob: p.dob, gender: p.gender, phone: p.phone, emergencyContact: p.emergencyContactName, emergencyPhone: p.emergencyContactPhone, address: p.address, doctor: p.treatingDoctor })
+    setReadmitPrefill({
+      fullName: p.name, dob: p.dob, gender: p.gender, phone: p.phone,
+      emergencyContact: p.emergencyContactName, emergencyPhone: p.emergencyContactPhone,
+      address: p.address, doctor: p.treatingDoctor,
+      // Pass last discharge info so re-admission logic can resume sub-category if within 7 days
+      lastDischargeDate: p.dischargeDate ?? '',
+      lastSubCategory: p.currentSubStatus ?? '',
+    })
     navigate('new-admission')
   }
 
@@ -251,9 +345,18 @@ export default function Page() {
     )
     switch (page) {
       case 'dashboard': return <Dashboard patients={patients} onNavigate={navigate} />
-      case 'all-patients': return <AllPatients patients={patients} onViewPatient={viewPatient} onNewAdmission={() => navigate('new-admission')} />
+      case 'all-patients': return <AllPatients patients={patients} onViewPatient={viewPatient} onNewAdmission={() => navigate('new-admission')} onRefreshData={loadData} onAddToast={addToast} />
       case 'patient-detail': return selectedPatient ? (
-        <PatientDetail patient={selectedPatient} onBack={() => { loadData(); navigate('all-patients') }} onNavigate={navigate} onAddToast={addToast} onUpdatePatient={updatePatient} onRefreshPatient={refreshPatient} />
+        patientDetailLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-7 h-7 border-2 border-[#007AFF] border-t-transparent rounded-full animate-spin" />
+              <p className="text-[13px] text-[#8E8E93]">Loading patient...</p>
+            </div>
+          </div>
+        ) : (
+          <PatientDetail patient={selectedPatient} onBack={() => { loadData(); navigate('all-patients') }} onNavigate={navigate} onAddToast={addToast} onUpdatePatient={updatePatient} onRefreshPatient={refreshPatient} onRefreshData={loadData} />
+        )
       ) : <div className="p-6 text-[#8E8E93] text-[14px]">Patient not found.</div>
       case 'new-admission': return <NewAdmission onSubmit={handleNewAdmission} prefill={readmitPrefill} />
       case 'capacity-assessments': case 'assessment-schedule': return <CapacityAssessments patients={patients} onViewPatient={viewPatient} onAddToast={addToast} onUpdatePatient={updatePatient} onRefreshData={loadData} />
@@ -262,7 +365,7 @@ export default function Page() {
       case 'discharged': return <Discharged patients={patients} onViewPatient={viewPatient} onReadmit={handleReadmit} onAddToast={addToast} />
       case 'calendar': return <CalendarPage patients={patients} onViewPatient={viewPatient} />
       case 'occupancy-report': case 'admission-analytics': return <OccupancyReport patients={patients} />
-      case 'active-admissions': return <AllPatients patients={patients.filter(p => p.admissionType !== 'Discharged')} onViewPatient={viewPatient} onNewAdmission={() => navigate('new-admission')} />
+      case 'active-admissions': return <AllPatients patients={patients.filter(p => p.admissionType !== 'Discharged')} onViewPatient={viewPatient} onNewAdmission={() => navigate('new-admission')} onRefreshData={loadData} onAddToast={addToast} />
       case 'notification-preferences': return <Settings onAddToast={addToast} initialSection="Notification Rules" />
       case 'settings': return <Settings onAddToast={addToast} />
       default: return null
@@ -279,7 +382,7 @@ export default function Page() {
 
   return (
     <div className="flex h-screen bg-[#F2F2F7] overflow-hidden font-sans">
-      <Sidebar activePage={page as PageId} onNavigate={navigate} onSearch={setSearchQuery} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} patients={patients} onViewPatient={viewPatient} />
+      <Sidebar activePage={page as PageId} onNavigate={navigate} onSearch={setSearchQuery} mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} patients={patients} onViewPatient={viewPatient} facility={facility} facilities={FACILITIES as unknown as string[]} onSwitchFacility={switchFacility} />
 
       <div className="flex-1 flex flex-col min-w-0">
         <Header pageId={page} breadcrumbs={getBreadcrumbs()} notifications={notifications} onBellClick={() => setNotifOpen(true)} onNavigate={navigate} onMenuClick={() => setSidebarOpen(true)} accentColor={getPageColor()} onSignOut={async () => { await supabase.auth.signOut(); router.replace('/login') }} />

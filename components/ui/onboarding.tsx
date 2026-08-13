@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { X } from 'lucide-react'
+import { upsertSetting, fetchSettings } from '@/lib/db'
 
 const TIPS = [
   { target: 'Add new patients here', description: 'Use "New Admission" to register a patient into the system.' },
@@ -14,13 +15,16 @@ export function OnboardingTooltip() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const seen = localStorage.getItem('onboarding-seen')
-    if (!seen) setVisible(true)
+    fetchSettings().then(({ data }) => {
+      if (!data) { setVisible(true); return }
+      const seen = data.find(s => s.key === 'onboarding_seen')?.value
+      if (seen !== 'true') setVisible(true)
+    })
   }, [])
 
-  function dismiss() {
+  async function dismiss() {
     setVisible(false)
-    localStorage.setItem('onboarding-seen', 'true')
+    await upsertSetting('onboarding_seen', 'true')
   }
 
   function next() {

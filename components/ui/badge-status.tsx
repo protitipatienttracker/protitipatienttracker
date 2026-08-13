@@ -10,6 +10,11 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   'Discharged': { label: 'Discharged', className: 'bg-[#8E8E93]/12 text-[#8E8E93]' },
   'Independent': { label: 'Independent', className: 'bg-[#007AFF]/12 text-[#007AFF]' },
   'High Support': { label: 'High Support', className: 'bg-[#FF9500]/12 text-[#FF9500]' },
+  'CHS >30 days':  { label: 'CHS >30 days',  className: 'bg-[#FF9500]/12 text-[#FF9500]' },
+  'CHS >90 days':  { label: 'CHS >90 days',  className: 'bg-[#FF9500]/12 text-[#FF9500]' },
+  'CHS >120 days': { label: 'CHS >120 days', className: 'bg-[#FF9500]/12 text-[#FF9500]' },
+  'CHS >180 days': { label: 'CHS >180 days', className: 'bg-[#5856D6]/12 text-[#5856D6]' },
+  'HS ≤30 days':  { label: 'HS ≤30 days',  className: 'bg-[#FF3B30]/12 text-[#FF3B30]' },
   'Minor': { label: 'Minor', className: 'bg-[#AF52DE]/12 text-[#AF52DE]' },
   'Pass': { label: 'Pass', className: 'bg-[#34C759]/12 text-[#34C759]' },
   'Fail': { label: 'Fail', className: 'bg-[#FF3B30]/12 text-[#FF3B30]' },
@@ -17,10 +22,12 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   'Pending': { label: 'Pending', className: 'bg-[#FF9500]/12 text-[#FF9500]' },
 }
 
-export function StatusBadge({ status, className }: { status: string; className?: string }) {
+export function StatusBadge({ status, tooltip, className }: { status: string; tooltip?: string; className?: string }) {
   const config = statusConfig[status] ?? { label: status, className: 'bg-[#8E8E93]/12 text-[#8E8E93]' }
   return (
-    <span className={cn('inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold', config.className, className)}>
+    <span
+      title={tooltip}
+      className={cn('inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold', config.className, className, tooltip && 'cursor-help')}>
       {config.label}
     </span>
   )

@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { ChevronLeft, ChevronRight, X, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { formatDate, daysFromNow, daysAgo, TODAY, type Patient } from '@/lib/data'
 
@@ -49,40 +49,41 @@ function addDays(dateStr: string, n: number): string {
   return d.toISOString().split('T')[0]
 }
 
-// Generate all scheduled CA reminder dates for a patient based on admission type
+// Generate all scheduled CA dates for a patient — past and future
 function buildAssessmentReminders(p: Patient): CalendarEvent[] {
   const events: CalendarEvent[] = []
   if (p.admissionType === 'Discharged' || p.admissionType === 'Minor') return events
-
   const admDate = p.admissionDate
   if (!admDate) return events
 
+  // For HS/CHS, use hsStartDate as the base (may differ from admissionDate if shifted from Independent)
+  const hsBase = p.hsStartDate || admDate
+
+  const today = new Date().toISOString().split('T')[0]
+  const futureLimit = addDays(today, 365)
+
   if (p.admissionType === 'High Support' && p.currentSubStatus === 'HS ≤30 days') {
-    // Weekly CAs on day 7, 14, 21, 28
     for (let week = 1; week <= 4; week++) {
-      const date = addDays(admDate, week * 7)
+      const date = addDays(hsBase, week * 7)
       events.push({
         id: `ca-hs-${p.id}-w${week}`,
         date,
         patientName: p.name,
-        action: `CA Due (HS Week ${week})`,
+        action: `CA Due — HS Week ${week}`,
         type: 'assessment',
         hour: 10,
       })
     }
-  } else if (p.currentSubStatus.startsWith('CHS') || p.admissionType === 'Independent') {
-    // Fortnightly CAs — generate for the next 6 months from today
-    const today = new Date().toISOString().split('T')[0]
-    const lastCA = p.assessments.slice(-1)[0]?.date ?? admDate
-    let next = addDays(lastCA, 14)
-    const limit = addDays(today, 180)
+  } else if (p.currentSubStatus.startsWith('CHS')) {
+    const lastCA = p.assessments.slice(-1)[0]?.date ?? hsBase
+    let next = addDays(hsBase, 14)
     let i = 1
-    while (next <= limit) {
+    while (next <= futureLimit && i <= 52) {
       events.push({
         id: `ca-chs-${p.id}-${i}`,
         date: next,
         patientName: p.name,
-        action: `CA Due (${p.currentSubStatus === 'Independent' ? 'Independent' : p.currentSubStatus})`,
+        action: `CA Due — ${p.currentSubStatus}`,
         type: 'assessment',
         hour: 10,
       })
@@ -119,6 +120,20 @@ function buildEvents(patients: Patient[]): CalendarEvent[] {
     }
     // Upcoming scheduled CA reminders
     events.push(...buildAssessmentReminders(p))
+    // CHS milestone boundaries — based on hsStartDate
+    if (p.admissionType === 'High Support' && p.hsStartDate) {
+      const hsBase = p.hsStartDate
+      const milestones: [number, string][] = [
+        [30,  'Shift to CHS (Day 31)'],
+        [90,  'CHS >30 → >90 days (Day 91)'],
+        [120, 'CHS >90 → >120 days (Day 121)'],
+        [180, 'CHS >120 → >180 days (Day 181)'],
+        [361, 'CHS >180 days renewal'],
+      ]
+      for (const [day, label] of milestones) {
+        events.push({ id: `chs-milestone-${p.id}-${day}`, date: addDays(hsBase, day), patientName: p.name, action: label, type: 'renewal', hour: 9 })
+      }
+    }
   }
   return events
 }
@@ -140,9 +155,26 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [popupEvent, setPopupEvent] = useState<CalendarEvent | null>(null)
   const [activeFilters, setActiveFilters] = useState<Set<CalendarEvent['type']>>(new Set(['overdue', 'renewal', 'assessment', 'discharge', 'admission']))
+  const [patientSearch, setPatientSearch] = useState('')
+  const [selectedPatient, setSelectedPatient] = useState<string | null>(null)
+  const [dropdownOpen, setDropdownOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
 
   const allEvents = buildEvents(patients)
-  const events = allEvents.filter(e => activeFilters.has(e.type))
+  const uniquePatientNames = Array.from(new Set(allEvents.map(e => e.patientName))).sort()
+  const filteredNames = uniquePatientNames.filter(n => n.toLowerCase().includes(patientSearch.toLowerCase()))
+
+  const events = allEvents
+    .filter(e => activeFilters.has(e.type))
+    .filter(e => !selectedPatient || e.patientName === selectedPatient)
 
   function toggleFilter(type: CalendarEvent['type']) {
     setActiveFilters(prev => {
@@ -184,6 +216,50 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
       <div className="flex-1 min-w-0 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-2">
+          {/* Patient Search Dropdown */}
+          <div ref={dropdownRef} className="relative order-last sm:order-none w-full sm:w-48">
+            <div
+              className={cn('flex items-center gap-2 px-3 py-2 rounded-xl border text-[13px] cursor-pointer transition-colors',
+                selectedPatient ? 'bg-[#007AFF]/10 border-[#007AFF]/30 text-[#007AFF]' : 'bg-[#F2F2F7] border-transparent text-[#8E8E93]'
+              )}
+              onClick={() => setDropdownOpen(o => !o)}
+            >
+              <Search className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate flex-1">{selectedPatient ?? 'Filter by patient'}</span>
+              {selectedPatient && (
+                <button onClick={e => { e.stopPropagation(); setSelectedPatient(null); setPatientSearch('') }}
+                  className="shrink-0 text-[#007AFF] hover:text-[#0056CC]">
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+            {dropdownOpen && (
+              <div className="absolute top-full mt-1 left-0 w-full bg-white rounded-xl shadow-lg border border-[rgba(60,60,67,0.12)] z-40 overflow-hidden">
+                <div className="p-2 border-b border-[rgba(60,60,67,0.08)]">
+                  <input
+                    autoFocus
+                    value={patientSearch}
+                    onChange={e => setPatientSearch(e.target.value)}
+                    placeholder="Search patient…"
+                    className="w-full text-[13px] px-2 py-1.5 rounded-lg bg-[#F2F2F7] outline-none placeholder:text-[#C7C7CC]"
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {filteredNames.length === 0 ? (
+                    <p className="text-[12px] text-[#8E8E93] px-3 py-2">No patients found</p>
+                  ) : filteredNames.map(name => (
+                    <button key={name}
+                      onClick={() => { setSelectedPatient(name); setPatientSearch(''); setDropdownOpen(false) }}
+                      className={cn('w-full text-left px-3 py-2 text-[13px] hover:bg-[#F2F2F7] transition-colors',
+                        selectedPatient === name ? 'text-[#007AFF] font-medium' : 'text-[#3A3A3C]'
+                      )}>
+                      {name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <button onClick={prev} className="p-2 rounded-xl bg-[#E5E5EA] active:bg-[#D1D1D6] text-[#3A3A3C]">
               <ChevronLeft className="w-4 h-4" />

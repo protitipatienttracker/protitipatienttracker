@@ -3,9 +3,9 @@ import { useState } from 'react'
 import { AlertTriangle, Eye } from 'lucide-react'
 import { StatusBadge, AdmissionTypeBadge } from '@/components/ui/badge-status'
 import { Modal } from '@/components/ui/modal'
-import { formatDate, daysBetween, daysFromNow, TODAY, type Patient } from '@/lib/data'
+import { formatDate, daysBetween, type Patient } from '@/lib/data'
 import { cn } from '@/lib/utils'
-import { addBillingPeriod, updateSubCategory, getNextMilestoneSubCategory } from '@/lib/db'
+import { updateSubCategory, getNextMilestoneSubCategory, addClinicalNote } from '@/lib/db'
 
 interface Props {
   patients: Patient[]
@@ -18,12 +18,11 @@ interface Props {
 export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpdatePatient, onRefreshData }: Props) {
   const [dateFilter, setDateFilter] = useState('This Week')
   const [renewModal, setRenewModal] = useState<Patient | null>(null)
-  const [billingAmount, setBillingAmount] = useState('')
   const [renewNotes, setRenewNotes] = useState('')
 
   const renewalPatients = patients.filter(p =>
     p.admissionType !== 'Discharged' &&
-    (p.nextActionType === 'Shift to CHS' || p.nextActionType === 'Shift to HS >90 days' || p.nextActionType === 'Shift to HS >30 days')
+    (p.nextActionType === 'Shift to CHS' || p.nextActionType === 'CHS Renewal')
   )
 
   function getDaysOverdue(dueDate: string): number {
@@ -31,39 +30,23 @@ export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpd
     return daysBetween(dueDate)
   }
 
-  function openRenewModal(p: Patient) {
-    const lastBill = p.billingPeriods.slice(-1)[0]
-    setBillingAmount(lastBill?.amount?.toString() ?? '30000')
-    setRenewNotes('')
-    setRenewModal(p)
-  }
-
   async function handleRenew() {
     if (!renewModal || !renewModal.activeAdmissionId) return
-    const today = TODAY.toISOString().split('T')[0]
-    const endDate = daysFromNow(30)
-
-    const { error: billError } = await addBillingPeriod({
-      patient_id: renewModal.id,
-      admission_id: renewModal.activeAdmissionId,
-      period_label: `Period ${renewModal.billingPeriods.length + 1}`,
-      from_date: today,
-      to_date: endDate,
-      sub_category: renewModal.currentSubStatus,
-      amount: parseInt(billingAmount) || 30000,
-      status: 'Pending',
-    })
-    if (billError) {
-      onAddToast('error', 'Renewal failed', billError.message)
-      return
-    }
-
     const nextSub = getNextMilestoneSubCategory(renewModal.currentSubStatus)
     if (nextSub !== renewModal.currentSubStatus) {
       await updateSubCategory(renewModal.activeAdmissionId, nextSub)
     }
-
-    onAddToast('success', 'Renewal completed', `${renewModal.name}'s admission renewed.`)
+    if (renewNotes.trim()) {
+      await addClinicalNote({
+        patient_id: renewModal.id,
+        admission_id: renewModal.activeAdmissionId,
+        note_date: new Date().toISOString().split('T')[0],
+        author: 'Arjun Sathe',
+        note_type: 'Clinical',
+        content: `Renewal to ${nextSub}: ${renewNotes.trim()}`,
+      })
+    }
+    onAddToast('success', 'Renewal completed', `${renewModal.name} moved to ${nextSub}.`)
     setRenewModal(null)
     if (onRefreshData) await onRefreshData()
   }
@@ -104,7 +87,7 @@ export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpd
           <table className="w-full text-[13px]">
             <thead>
               <tr className="bg-[#F2F2F7]/60">
-                {['ID', 'Name', 'Type', 'Sub-Category', 'Admitted', 'Due', 'Status', ''].map(h => (
+                {['Name', 'Type', 'Sub-Category', 'Admitted', 'Due', 'Status', ''].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
                 ))}
               </tr>
@@ -112,20 +95,17 @@ export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpd
             <tbody>
               {renewalPatients.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-16 text-[#8E8E93]">
-                    No renewals due
-                  </td>
+                  <td colSpan={7} className="text-center py-16 text-[#8E8E93]">No renewals due</td>
                 </tr>
               ) : (
                 renewalPatients.map((p) => {
                   const overdueN = p.nextActionDue !== '—' ? getDaysOverdue(p.nextActionDue) : 0
                   return (
                     <tr key={p.id} className={cn(
-                      'ios-separator last:[border-bottom:none]',
+                      'ios-separator last:[border-bottom:none] cursor-pointer hover:bg-[#F2F2F7]/50',
                       overdueN > 0 && 'bg-[#FF3B30]/4',
                       overdueN === 0 && p.nextActionDue !== '—' && 'bg-[#FF9500]/4',
-                    )}>
-                      <td className="px-5 py-3 font-mono text-[#8E8E93] text-[12px]">{p.id}</td>
+                    )} onClick={() => onViewPatient(p.id)}>
                       <td className="px-5 py-3 font-medium text-[#000000]">{p.name}</td>
                       <td className="px-5 py-3"><AdmissionTypeBadge type={p.admissionType} /></td>
                       <td className="px-5 py-3 text-[#3A3A3C]">{p.currentSubStatus}</td>
@@ -140,21 +120,13 @@ export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpd
                           <span className="text-[#3A3A3C]">{Math.abs(overdueN)}d left</span>
                         )}
                       </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => openRenewModal(p)}
-                            className="px-3 py-1.5 text-[12px] bg-[#007AFF] text-white rounded-lg font-medium active:opacity-80"
-                          >
-                            Renew
-                          </button>
-                          <button
-                            onClick={() => onViewPatient(p.id)}
-                            className="p-2 rounded-lg text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/8"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="px-5 py-3" onClick={e => e.stopPropagation()}>
+                        <button
+                          onClick={() => { setRenewNotes(''); setRenewModal(p) }}
+                          className="px-3 py-1.5 text-[12px] bg-[#007AFF] text-white rounded-lg font-medium active:opacity-80"
+                        >
+                          Renew
+                        </button>
                       </td>
                     </tr>
                   )
@@ -174,24 +146,13 @@ export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpd
                 <span className="font-semibold text-[#000000]">{renewModal.name}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#8E8E93]">Current Period</span>
+                <span className="text-[#8E8E93]">Current</span>
                 <span className="font-medium text-[#3A3A3C]">{renewModal.currentSubStatus}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-[#8E8E93]">New Period</span>
-                <span className="font-medium text-[#3A3A3C]">
-                  {formatDate(TODAY.toISOString().split('T')[0])} → {formatDate(daysFromNow(30))}
-                </span>
+                <span className="text-[#8E8E93]">Moves to</span>
+                <span className="font-medium text-[#007AFF]">{getNextMilestoneSubCategory(renewModal.currentSubStatus)}</span>
               </div>
-            </div>
-            <div>
-              <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Amount (₹)</label>
-              <input
-                type="number"
-                value={billingAmount}
-                onChange={e => setBillingAmount(e.target.value)}
-                className="w-full bg-[#F2F2F7] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30"
-              />
             </div>
             <div>
               <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Notes (optional)</label>

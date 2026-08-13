@@ -1,10 +1,10 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Calendar, Users, UserPlus, ArrowLeftRight,
   ClipboardList, Clock, Archive, Brain, CalendarDays,
-  BarChart2, TrendingUp, Settings, Bell, Search
+  BarChart2, TrendingUp, Settings, Bell, Search, ChevronDown, Check, Building2
 } from 'lucide-react'
 import type { Patient } from '@/lib/data'
 
@@ -36,11 +36,33 @@ interface SidebarProps {
   onMobileClose?: () => void
   patients?: Patient[]
   onViewPatient?: (id: string) => void
+  facility?: string
+  facilities?: string[]
+  onSwitchFacility?: (f: string) => void
 }
 
-export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, onMobileClose, patients = [], onViewPatient }: SidebarProps) {
+export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, onMobileClose, patients = [], onViewPatient, facility = 'Pratiti', facilities = ['Pratiti', 'Pratiti Elder Care LLP'], onSwitchFacility }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchFocused, setSearchFocused] = useState(false)
+  const [facilityOpen, setFacilityOpen] = useState(false)
+  const [sidebarWidth, setSidebarWidth] = useState(256)
+  const isDragging = useRef(false)
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    isDragging.current = true
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isDragging.current) return
+      setSidebarWidth(w => Math.min(400, Math.max(180, w + e.movementX)))
+    }
+    const onMouseUp = () => {
+      isDragging.current = false
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
+  }, [])
 
   const overdueRenewals = patients.filter(p =>
     p.admissionType !== 'Discharged' &&
@@ -83,6 +105,7 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
   function handleSearch(v: string) {
     setSearchQuery(v)
     onSearch(v)
+    setFacilityOpen(false)
   }
 
   const searchResults = searchQuery.trim().length > 0
@@ -95,17 +118,42 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
       <div className="fixed inset-0 bg-black/30 z-40 lg:hidden" onClick={onMobileClose} />
     )}
     <aside
+      style={{ width: mobileOpen ? 256 : sidebarWidth }}
       className={cn(
-        'flex flex-col h-screen w-64 bg-[#1C1C1E] text-white shrink-0 transition-transform duration-300 overflow-hidden',
+        'flex flex-col h-screen bg-[#1C1C1E] text-white shrink-0 transition-transform duration-300 overflow-hidden relative',
         'hidden lg:flex',
         mobileOpen && '!fixed inset-y-0 left-0 !flex z-50'
       )}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5">
-        <img src="/applogo.png" alt="Pratiti" className="w-9 h-9 rounded-xl shrink-0" />
-        <span className="text-white font-semibold text-[17px] tracking-tight">Pratiti</span>
-        <span className="w-2 h-2 rounded-full bg-[#34C759] ml-auto" title="Online" />
+      {/* Logo + Facility Switcher */}
+      <div className="px-4 py-4 relative">
+        <button
+          onClick={() => setFacilityOpen(o => !o)}
+          className="flex items-center gap-3 w-full rounded-xl px-2 py-1.5 hover:bg-white/8 transition-colors active:bg-white/12"
+        >
+          <img src="/applogo.png" alt="Pratiti" className="w-8 h-8 rounded-xl shrink-0" />
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-white font-semibold text-[14px] truncate leading-tight">{facility}</p>
+            <p className="text-[#8E8E93] text-[11px] leading-tight">Switch hospital</p>
+          </div>
+          <ChevronDown className={cn('w-4 h-4 text-[#8E8E93] shrink-0 transition-transform', facilityOpen && 'rotate-180')} />
+        </button>
+
+        {facilityOpen && (
+          <div className="absolute left-4 right-4 top-full mt-1 bg-[#2C2C2E] rounded-xl overflow-hidden z-50 border border-white/10" style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.5)' }}>
+            {facilities.map(f => (
+              <button
+                key={f}
+                onClick={() => { onSwitchFacility?.(f); setFacilityOpen(false) }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/8 transition-colors"
+              >
+                <Building2 className="w-4 h-4 text-[#8E8E93] shrink-0" />
+                <span className="flex-1 text-[13px] text-white truncate">{f}</span>
+                {f === facility && <Check className="w-4 h-4 text-[#34C759] shrink-0" />}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Search */}
@@ -183,6 +231,12 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
           </div>
         ))}
       </nav>
+
+      {/* Resize handle */}
+      <div
+        onMouseDown={onMouseDown}
+        className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-white/20 active:bg-white/30 transition-colors"
+      />
 
       {/* User */}
       <div className="border-t border-white/10 px-4 py-4 flex items-center gap-3">

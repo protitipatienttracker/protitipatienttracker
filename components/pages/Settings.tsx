@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Save, Plus, Pencil, UserX, Info, Loader2 } from 'lucide-react'
+import { Save, Plus, UserX, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   fetchStaff, addStaffMember, updateStaffStatus,
@@ -18,6 +18,15 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: () =
       >
         <div className={cn('absolute top-[2px] w-[27px] h-[27px] bg-white rounded-full shadow-sm transition-transform', checked ? 'translate-x-[22px]' : 'translate-x-[2px]')} />
       </button>
+    </div>
+  )
+}
+
+function Row({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-1.5 ios-separator last:[border-bottom:none]">
+      <span className="text-[12px] text-[#8E8E93] shrink-0">{label}</span>
+      <span className="text-[12px] font-medium text-right" style={{ color: color ?? '#000000' }}>{value}</span>
     </div>
   )
 }
@@ -41,13 +50,10 @@ export default function Settings({ onAddToast, initialSection }: Props) {
     notifyRenewal: true,
     notifyAssessment: true,
     notifyMinorTurning18: true,
-    emailNotifications: true,
-    whatsappNotifications: false,
-    whatsappNumber: '',
   })
   const [settingsLoading, setSettingsLoading] = useState(true)
 
-  const sections = ['Facility Info', 'Staff Management', 'Notification Rules', 'Admission Rules']
+  const sections = ['Facility Info', 'Staff Management', 'Notification Rules', 'Admission Rules', 'How to Use']
 
   const loadStaff = useCallback(async () => {
     setStaffLoading(true)
@@ -72,9 +78,6 @@ export default function Settings({ onAddToast, initialSection }: Props) {
         notifyRenewal: map['notify_renewal'] !== 'false',
         notifyAssessment: map['notify_assessment'] !== 'false',
         notifyMinorTurning18: map['notify_minor_turning_18'] !== 'false',
-        emailNotifications: map['email_notifications'] !== 'false',
-        whatsappNotifications: map['whatsapp_notifications'] === 'true',
-        whatsappNumber: map['whatsapp_number'] ?? '',
       })
     }
     setSettingsLoading(false)
@@ -98,9 +101,6 @@ export default function Settings({ onAddToast, initialSection }: Props) {
       upsertSetting('notify_renewal_days_before', String(notifSettings.renewalDaysBefore)),
       upsertSetting('notify_assessment', String(notifSettings.notifyAssessment)),
       upsertSetting('notify_minor_turning_18', String(notifSettings.notifyMinorTurning18)),
-      upsertSetting('email_notifications', String(notifSettings.emailNotifications)),
-      upsertSetting('whatsapp_notifications', String(notifSettings.whatsappNotifications)),
-      upsertSetting('whatsapp_number', notifSettings.whatsappNumber),
     ])
     onAddToast('success', 'Notification settings saved')
   }
@@ -297,19 +297,6 @@ export default function Settings({ onAddToast, initialSection }: Props) {
                     onChange={() => setNotifSettings(s => ({ ...s, notifyAssessment: !s.notifyAssessment }))} />
                   <Toggle label="Minor approaching 18" checked={notifSettings.notifyMinorTurning18}
                     onChange={() => setNotifSettings(s => ({ ...s, notifyMinorTurning18: !s.notifyMinorTurning18 }))} />
-                  <Toggle label="Email notifications" checked={notifSettings.emailNotifications}
-                    onChange={() => setNotifSettings(s => ({ ...s, emailNotifications: !s.emailNotifications }))} />
-                  <Toggle label="WhatsApp notifications" checked={notifSettings.whatsappNotifications}
-                    onChange={() => setNotifSettings(s => ({ ...s, whatsappNotifications: !s.whatsappNotifications }))} />
-                  {notifSettings.whatsappNotifications && (
-                    <div className="py-3 flex items-center gap-3 ios-separator">
-                      <span className="text-[13px] text-[#8E8E93]">Number:</span>
-                      <input value={notifSettings.whatsappNumber}
-                        onChange={e => setNotifSettings(s => ({ ...s, whatsappNumber: e.target.value }))}
-                        placeholder="+91 XXXXX XXXXX"
-                        className="flex-1 bg-white rounded-lg px-3 py-1.5 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
-                    </div>
-                  )}
                 </div>
                 <div className="flex justify-end">
                   <button onClick={handleSaveNotifSettings}
@@ -324,52 +311,172 @@ export default function Settings({ onAddToast, initialSection }: Props) {
         )}
 
         {section === 'Admission Rules' && (
-          <div className="ios-card p-6 space-y-5">
-            <h2 className="text-[17px] font-semibold text-[#000000]">Admission Rules</h2>
-            <div className="flex items-start gap-2.5 p-4 bg-[#007AFF]/8 rounded-2xl">
-              <Info className="w-4 h-4 text-[#007AFF] shrink-0 mt-0.5" />
-              <p className="text-[12px] text-[#007AFF]">
-                These milestones are system-configured. Contact support to modify.
-              </p>
+          <div className="space-y-4">
+
+            {/* Independent */}
+            <div className="ios-card p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#007AFF]" />
+                <h2 className="text-[15px] font-semibold text-[#000000]">Independent Admission <span className="text-[12px] font-normal text-[#8E8E93]">(Voluntary)</span></h2>
+              </div>
+              <p className="text-[13px] text-[#3A3A3C] leading-relaxed">Patient passes a capacity assessment at admission and is admitted voluntarily. No further scheduled CAs. If they lose capacity during their stay, a CA can be done — if they fail, they are shifted to High Support.</p>
+              <div className="bg-[#F2F2F7] rounded-xl p-4 space-y-2">
+                <Row label="CA at admission" value="Required (Pass = admitted as Independent)" />
+                <Row label="Ongoing CAs" value="None scheduled" />
+                <Row label="Fail CA during stay" value="Auto-shift to High Support (HS ≤30 days)" color="#FF3B30" />
+                <Row label="Discharge" value="Voluntary at any time" />
+              </div>
             </div>
-            <div className="space-y-2">
-              <h3 className="text-[12px] font-semibold text-[#8E8E93] uppercase tracking-wide">High Support Milestones</h3>
-              {[
-                { label: 'Initial Period', range: 'Day 1 – 30', subCat: 'HS ≤30 days', action: 'Assessment at day 30' },
-                { label: 'Extended 1 (Beyond 30)', range: 'Day 31 – 120', subCat: 'HS >30 days', action: 'Renewal at day 120' },
-                { label: 'Extended 2 (Beyond 120)', range: 'Day 121 – 240', subCat: 'HS >120 days', action: 'Renewal at day 240' },
-                { label: 'Extended 3 (Beyond 240)', range: 'Day 241 – 420', subCat: 'HS >240 days', action: 'Renewal at day 420' },
-                { label: 'Long-term (Beyond 420)', range: 'Day 421 – 600', subCat: 'HS >420 days', action: 'Renewal at day 600' },
-                { label: 'Long-term (Beyond 600)', range: 'Day 601 – 780', subCat: 'HS >600 days', action: 'Recurring every 180 days' },
-              ].map(rule => (
-                <div key={rule.subCat} className="flex items-center gap-4 p-4 bg-[#F2F2F7] rounded-xl">
-                  <div className="w-1.5 h-8 bg-[#007AFF] rounded-full shrink-0" />
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[13px] font-semibold text-[#000000]">{rule.label}</span>
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-[#FF9500]/12 text-[#FF9500] font-semibold">{rule.subCat}</span>
-                    </div>
-                    <p className="text-[12px] text-[#8E8E93] mt-0.5">{rule.range} · {rule.action}</p>
-                  </div>
-                </div>
-              ))}
+
+            {/* Minor */}
+            <div className="ios-card p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#AF52DE]" />
+                <h2 className="text-[15px] font-semibold text-[#000000]">Minor Admission <span className="text-[12px] font-normal text-[#8E8E93]">(Involuntary — under 18)</span></h2>
+              </div>
+              <p className="text-[13px] text-[#3A3A3C] leading-relaxed">Any patient under 18 years of age. Parental/guardian consent required. No capacity assessment needed during admission.</p>
+              <div className="bg-[#F2F2F7] rounded-xl p-4 space-y-2">
+                <Row label="Capacity Assessment" value="Not required" />
+                <Row label="Discharge before 18" value="Discharged home by parents" />
+                <Row label="Turns 18" value="CA required → Independent or High Support" color="#FF9500" />
+                <Row label="Re-admission" value="Can be re-admitted as Minor if still under 18" />
+              </div>
             </div>
-            <div className="space-y-2 pt-2">
-              <h3 className="text-[12px] font-semibold text-[#8E8E93] uppercase tracking-wide">Other Types</h3>
-              <div className="flex items-center gap-4 p-4 bg-[#F2F2F7] rounded-xl">
-                <div className="w-1.5 h-8 bg-[#007AFF] rounded-full shrink-0" />
-                <div className="flex-1">
-                  <span className="text-[13px] font-semibold text-[#000000]">Independent</span>
-                  <p className="text-[12px] text-[#8E8E93] mt-0.5">Requires passing assessment. Regular 30-day reviews.</p>
+
+            {/* High Support */}
+            <div className="ios-card p-5 space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#FF9500]" />
+                <h2 className="text-[15px] font-semibold text-[#000000]">High Support Admission <span className="text-[12px] font-normal text-[#8E8E93]">(Involuntary)</span></h2>
+              </div>
+              <p className="text-[13px] text-[#3A3A3C] leading-relaxed">Patient fails a capacity assessment. Admitted involuntarily. Progresses through sub-categories based on duration. CA every 14 days in CHS stages.</p>
+
+              {/* Sub-category table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-[12px]">
+                  <thead>
+                    <tr className="bg-[#F2F2F7]">
+                      {['Sub-Category', 'Day Range', 'Shift On', 'CA Frequency'].map(h => (
+                        <th key={h} className="text-left px-3 py-2.5 text-[#8E8E93] font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { sub: 'HS ≤30 days',   range: 'Day 1–30',    shift: 'Day 31',  ca: 'Every 7 days', color: '#FF3B30' },
+                      { sub: 'CHS >30 days',  range: 'Day 31–90',   shift: 'Day 91',  ca: 'Every 14 days', color: '#FF9500' },
+                      { sub: 'CHS >90 days',  range: 'Day 91–120',  shift: 'Day 121', ca: 'Every 14 days', color: '#FF9500' },
+                      { sub: 'CHS >120 days', range: 'Day 121–180', shift: 'Day 181', ca: 'Every 14 days', color: '#FF9500' },
+                      { sub: 'CHS >180 days', range: 'Day 181+',    shift: 'Every 181 days (recurring)', ca: 'Every 14 days', color: '#5856D6' },
+                    ].map((r, i, arr) => (
+                      <tr key={r.sub} className={i < arr.length - 1 ? 'ios-separator' : ''}>
+                        <td className="px-3 py-2.5">
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold" style={{ backgroundColor: r.color + '20', color: r.color }}>{r.sub}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-[#3A3A3C]">{r.range}</td>
+                        <td className="px-3 py-2.5 text-[#3A3A3C]">{r.shift}</td>
+                        <td className="px-3 py-2.5 text-[#3A3A3C]">{r.ca}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Key rules */}
+              <div className="space-y-2">
+                <h3 className="text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">Key Rules</h3>
+                <div className="bg-[#F2F2F7] rounded-xl p-4 space-y-2">
+                  <Row label="Pass CA at any point" value="Immediately shift to Independent" color="#34C759" />
+                  <Row label="Discharge" value="Allowed at any point" />
+                  <Row label="Re-admission within 7 days" value="Resume same sub-category" color="#FF9500" />
+                  <Row label="Re-admission after 7 days" value="Restart from HS ≤30 days" color="#FF3B30" />
                 </div>
               </div>
-              <div className="flex items-center gap-4 p-4 bg-[#F2F2F7] rounded-xl">
-                <div className="w-1.5 h-8 bg-[#AF52DE] rounded-full shrink-0" />
-                <div className="flex-1">
-                  <span className="text-[13px] font-semibold text-[#000000]">Minor</span>
-                  <p className="text-[12px] text-[#8E8E93] mt-0.5">Parental consent. Auto-transitions at 18th birthday.</p>
-                </div>
+            </div>
+
+            {/* CA Summary */}
+            <div className="ios-card p-5 space-y-3">
+              <h2 className="text-[15px] font-semibold text-[#000000]">Capacity Assessment Summary</h2>
+              <div className="bg-[#F2F2F7] rounded-xl p-4 space-y-2">
+                <Row label="Independent" value="At admission only (no ongoing CAs)" />
+                <Row label="HS ≤30 days" value="Every 7 days (4 CAs in 30 days)" />
+                <Row label="CHS (all stages)" value="Every 14 days" />
+                <Row label="Minor" value="Not required (age-based only)" />
+                <Row label="Independent fail CA" value="Auto-shift to HS ≤30 days" color="#FF3B30" />
+                <Row label="HS/CHS pass CA" value="Auto-shift to Independent" color="#34C759" />
               </div>
+            </div>
+
+          </div>
+        )}
+
+        {section === 'How to Use' && (
+          <div className="space-y-4">
+            <div className="ios-card p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#007AFF]" />
+                <h2 className="text-[15px] font-semibold">Admitting a New Patient</h2>
+              </div>
+              <ol className="space-y-2 text-[13px] text-[#3A3A3C] list-decimal list-inside leading-relaxed">
+                <li>Tap <span className="font-medium">New Admission</span> in the sidebar.</li>
+                <li>Fill in patient details — name, DOB, gender, doctor, and admission date (backdating supported).</li>
+                <li>Select admission type: <span className="font-medium">Independent</span>, <span className="font-medium">High Support</span>, or <span className="font-medium">Minor</span>.</li>
+                <li>For Independent and High Support, complete the capacity assessment in Step 3.</li>
+                <li>Review and submit — patient appears immediately in All Patients.</li>
+              </ol>
+            </div>
+
+            <div className="ios-card p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#34C759]" />
+                <h2 className="text-[15px] font-semibold">Recording a Capacity Assessment</h2>
+              </div>
+              <ol className="space-y-2 text-[13px] text-[#3A3A3C] list-decimal list-inside leading-relaxed">
+                <li>Open the patient's detail page and go to the <span className="font-medium">Assessments</span> tab, or use the timeline.</li>
+                <li>Tap <span className="font-medium">Record</span> on the due assessment slot.</li>
+                <li>Enter the assessment date, assessor name, and result (Pass / Fail).</li>
+                <li><span className="font-medium">Pass</span> on a High Support patient → auto-shifts to Independent.</li>
+                <li><span className="font-medium">Fail</span> on an Independent patient → prompts shift to High Support.</li>
+              </ol>
+            </div>
+
+            <div className="ios-card p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#FF9500]" />
+                <h2 className="text-[15px] font-semibold">Shifting a CHS Milestone</h2>
+              </div>
+              <ol className="space-y-2 text-[13px] text-[#3A3A3C] list-decimal list-inside leading-relaxed">
+                <li>Open the patient's detail page — the timeline shows all milestone dates.</li>
+                <li>When a milestone date is reached, a <span className="font-medium">Shift</span> button appears on that event.</li>
+                <li>Tap <span className="font-medium">Shift</span> to advance the patient to the next CHS sub-category.</li>
+                <li>Once shifted, the button shows <span className="font-medium">Shifted ✓</span> and the patient's badge updates.</li>
+              </ol>
+            </div>
+
+            <div className="ios-card p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#FF3B30]" />
+                <h2 className="text-[15px] font-semibold">Discharging a Patient</h2>
+              </div>
+              <ol className="space-y-2 text-[13px] text-[#3A3A3C] list-decimal list-inside leading-relaxed">
+                <li>Open the patient's detail page and tap <span className="font-medium">Discharge</span>.</li>
+                <li>Select the discharge date and reason.</li>
+                <li>Confirm — patient moves to the Discharged list.</li>
+                <li>An <span className="font-medium">Undo</span> toast appears for 6 seconds to reverse the action if needed.</li>
+              </ol>
+            </div>
+
+            <div className="ios-card p-5 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#AF52DE]" />
+                <h2 className="text-[15px] font-semibold">Re-admitting a Patient</h2>
+              </div>
+              <ol className="space-y-2 text-[13px] text-[#3A3A3C] list-decimal list-inside leading-relaxed">
+                <li>Go to <span className="font-medium">Discharged</span> in the sidebar and find the patient.</li>
+                <li>Tap <span className="font-medium">Re-admit</span> — the form pre-fills with their previous details.</li>
+                <li>If re-admitted within 7 days of discharge, High Support patients resume their previous sub-category.</li>
+                <li>After 7 days, High Support restarts from <span className="font-medium">HS ≤30 days</span>.</li>
+              </ol>
             </div>
           </div>
         )}

@@ -1,8 +1,9 @@
 'use client'
 import { useState, useRef } from 'react'
-import { Search, UserPlus, Eye, Pencil, ChevronLeft, ChevronRight, Phone, FileText, Check } from 'lucide-react'
+import { Search, UserPlus, FileText, Check, Trash2, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
 import { StatusBadge, AdmissionTypeBadge } from '@/components/ui/badge-status'
 import { formatDate, type Patient } from '@/lib/data'
+import { deletePatients } from '@/lib/db'
 import { cn } from '@/lib/utils'
 
 function Avatar({ name, size = 'sm' }: { name: string; size?: 'sm' | 'md' }) {
@@ -20,16 +21,29 @@ interface Props {
   patients: Patient[]
   onViewPatient: (id: string) => void
   onNewAdmission: () => void
+  onRefreshData: () => Promise<void>
+  onAddToast: (type: 'success' | 'error' | 'info' | 'warning', title: string, message?: string) => void
 }
 
-export default function AllPatients({ patients, onViewPatient, onNewAdmission }: Props) {
+export default function AllPatients({ patients, onViewPatient, onNewAdmission, onRefreshData, onAddToast }: Props) {
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [bulkMode, setBulkMode] = useState(false)
   const [swipedRow, setSwipedRow] = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const touchStartX = useRef(0)
+
+  async function handleDelete() {
+    const ids = Array.from(selected)
+    const { error } = await deletePatients(ids)
+    if (error) { onAddToast('error', 'Delete failed', error.message); return }
+    onAddToast('success', `${ids.length} patient${ids.length > 1 ? 's' : ''} deleted`)
+    clearSelection()
+    setConfirmDelete(false)
+    await onRefreshData()
+  }
 
   function exportCSV() {
     const selectedPatients = filtered.filter(p => selected.has(p.id))
@@ -117,6 +131,26 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
             <button onClick={exportCSV} className="px-3 py-1.5 bg-[#007AFF]/10 text-[#007AFF] rounded-lg text-[12px] font-medium active:opacity-70">Export CSV</button>
             <button onClick={() => alert('Assign Doctor: Select patients and choose a doctor to bulk-assign.')} className="px-3 py-1.5 bg-[#5856D6]/10 text-[#5856D6] rounded-lg text-[12px] font-medium active:opacity-70">Assign Doctor</button>
             <button onClick={() => alert('Reminders will be sent for ' + selected.size + ' patients.')} className="px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-lg text-[12px] font-medium active:opacity-70">Reminder</button>
+            <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF3B30]/10 text-[#FF3B30] rounded-lg text-[12px] font-medium active:opacity-70">
+              <Trash2 className="w-3.5 h-3.5" /> Delete
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setConfirmDelete(false)}>
+          <div className="bg-white rounded-2xl p-6 mx-4 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-[#FF3B30]/10 mx-auto mb-4">
+              <Trash2 className="w-6 h-6 text-[#FF3B30]" />
+            </div>
+            <h2 className="text-[17px] font-bold text-center text-[#000000] mb-1">Delete {selected.size} Patient{selected.size > 1 ? 's' : ''}?</h2>
+            <p className="text-[13px] text-[#8E8E93] text-center mb-6">All admissions, assessments, notes, transfers and notifications will be permanently deleted. This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2.5 bg-[#E5E5EA] rounded-xl text-[14px] font-medium text-[#3A3A3C] active:bg-[#D1D1D6]">Cancel</button>
+              <button onClick={handleDelete} className="flex-1 py-2.5 bg-[#FF3B30] rounded-xl text-[14px] font-medium text-white active:opacity-80">Delete</button>
+            </div>
           </div>
         </div>
       )}
@@ -128,7 +162,6 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#F2F2F7]">
                 <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">Patient</th>
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">ID</th>
                 <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden md:table-cell">Age</th>
                 <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">Type</th>
                 <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden lg:table-cell">Admitted</th>
@@ -142,7 +175,7 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-16 text-[#8E8E93]">
+                  <td colSpan={9} className="text-center py-16 text-[#8E8E93]">
                     <div className="flex flex-col items-center gap-2">
                       <Search className="w-8 h-8 opacity-30" />
                       <p className="font-medium">No patients found</p>
@@ -179,12 +212,14 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-2.5">
                         <Avatar name={p.name} />
-                        <span className="font-medium text-[#000000]">{p.name}</span>
+                        <div>
+                          <p className="font-medium text-[#000000]">{p.name}</p>
+                          <p className="text-[11px] text-[#8E8E93] font-mono">{p.patientCode}</p>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-5 py-3 font-mono text-[#8E8E93] text-[12px]">{p.id}</td>
                     <td className="px-5 py-3 text-[#3A3A3C] hidden md:table-cell">{p.age}</td>
-                    <td className="px-5 py-3"><AdmissionTypeBadge type={p.admissionType} /></td>
+                    <td className="px-5 py-3"><AdmissionTypeBadge type={p.currentSubStatus.startsWith('CHS') || p.currentSubStatus === 'HS ≤30 days' ? p.currentSubStatus : p.admissionType} /></td>
                     <td className="px-5 py-3 text-[#8E8E93] hidden lg:table-cell">{formatDate(p.admissionDate)}</td>
                     <td className="px-5 py-3 text-[#3A3A3C] hidden lg:table-cell">{p.currentSubStatus}</td>
                     <td className="px-5 py-3 text-[#3A3A3C] hidden xl:table-cell">
@@ -193,19 +228,14 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission }:
                     <td className="px-5 py-3 text-[#3A3A3C] hidden xl:table-cell">
                       {p.nextActionDue === '—' ? '—' : p.nextActionType}
                     </td>
-                    <td className="px-5 py-3"><StatusBadge status={p.status} /></td>
-                    <td className="px-5 py-3 relative">
-                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                        {swipedRow === p.id ? (
-                          <div className="flex gap-1 animate-fade-in-up">
-                            <button onClick={() => onViewPatient(p.id)} className="p-2 rounded-lg bg-[#007AFF] text-white"><Eye className="w-4 h-4" /></button>
-                            {p.phone && <a href={`tel:${p.phone}`} className="p-2 rounded-lg bg-[#34C759] text-white"><Phone className="w-4 h-4" /></a>}
-                            <button onClick={() => onViewPatient(p.id)} className="p-2 rounded-lg bg-[#5856D6] text-white"><FileText className="w-4 h-4" /></button>
-                          </div>
-                        ) : (
-                          <button onClick={() => onViewPatient(p.id)} className="p-2 rounded-lg text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/8 transition-colors"><Eye className="w-4 h-4" /></button>
-                        )}
-                      </div>
+                    <td className="px-5 py-3"><StatusBadge status={p.status} tooltip={p.statusReason || undefined} /></td>
+                    <td className="px-5 py-3">
+                      {swipedRow === p.id && (
+                        <div className="flex gap-1 animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                          {p.phone && <a href={`tel:${p.phone}`} className="p-2 rounded-lg bg-[#34C759] text-white"><Phone className="w-4 h-4" /></a>}
+                          <button onClick={() => onViewPatient(p.id)} className="p-2 rounded-lg bg-[#5856D6] text-white"><FileText className="w-4 h-4" /></button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

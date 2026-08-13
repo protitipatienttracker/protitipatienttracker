@@ -18,11 +18,12 @@ export interface DbPatient {
   emergency_contact_phone: string | null
   address: string | null
   treating_doctor: string | null
+  facility: string
   created_at: string
   admissions?: DbAdmission[]
   capacity_assessments?: DbAssessment[]
-  billing_periods?: DbBillingPeriod[]
   clinical_notes?: DbNote[]
+  transfers?: DbTransfer[]
 }
 
 export interface DbAdmission {
@@ -51,19 +52,6 @@ export interface DbAssessment {
   next_assessment_due: string | null
   created_at: string
   patients?: Pick<DbPatient, 'full_name' | 'patient_code'>
-}
-
-export interface DbBillingPeriod {
-  id: string
-  patient_id: string
-  admission_id: string
-  period_label: string | null
-  from_date: string
-  to_date: string
-  sub_category: string | null
-  amount: number | null
-  status: 'Paid' | 'Pending'
-  created_at: string
 }
 
 export interface DbTransfer {

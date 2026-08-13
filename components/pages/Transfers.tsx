@@ -80,7 +80,7 @@ export default function Transfers({ transfers, patients, onAddTransfer, onAddToa
                     <td className="px-5 py-3 text-[#8E8E93]">{formatDate(t.date)}</td>
                     <td className="px-5 py-3">
                       <p className="font-medium text-[#000000]">{t.patientName}</p>
-                      <p className="font-mono text-[#8E8E93] text-[11px]">{t.patientId}</p>
+                      <p className="text-[#8E8E93] text-[11px]">{t.patientCode}</p>
                     </td>
                     <td className="px-5 py-3">
                       <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#8E8E93]/12 text-[#8E8E93]">{t.fromType}</span>
@@ -107,7 +107,7 @@ export default function Transfers({ transfers, patients, onAddTransfer, onAddToa
               className="w-full bg-[#F2F2F7] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30">
               <option value="">Select patient</option>
               {patients.filter(p => p.admissionType !== 'Discharged').map(p => (
-                <option key={p.id} value={p.id}>{p.name} ({p.id})</option>
+                <option key={p.id} value={p.id}>{p.name} ({p.patientCode})</option>
               ))}
             </select>
           </div>

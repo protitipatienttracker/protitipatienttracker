@@ -132,18 +132,16 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
       nextActionDue: '',
       nextActionType: 'Capacity Assessment',
       status: 'On Track',
-      assessments: admissionType !== 'Minor' ? [{
-        id: `A-${Date.now()}`,
+      // Pass assessment as a flat field so page.tsx can save it to Supabase
+      _admissionAssessment: admissionType !== 'Minor' ? {
         date: assessment.date,
-        conductedBy: assessment.assessedBy,
+        assessedBy: assessment.assessedBy,
         result: assessment.result as 'Pass' | 'Fail',
         notes: assessment.notes,
-        nextDue: '',
-      }] : [],
+      } : undefined,
       admissionHistory: [],
       notes: [],
-      billingPeriods: [],
-    })
+    } as any)
   }
 
   const typeCards = [

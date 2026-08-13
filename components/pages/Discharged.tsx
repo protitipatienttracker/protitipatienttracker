@@ -56,7 +56,7 @@ export default function Discharged({ patients, onViewPatient, onReadmit, onAddTo
           <table className="w-full text-[13px]">
             <thead>
               <tr className="bg-[#F2F2F7]/60">
-                {['ID', 'Name', 'Prior Type', 'Discharged', 'Stay', 'Reason', ''].map(h => (
+                {['Name', 'Prior Type', 'Discharged', 'Stay', 'Reason', ''].map(h => (
                   <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
                 ))}
               </tr>
@@ -64,7 +64,7 @@ export default function Discharged({ patients, onViewPatient, onReadmit, onAddTo
             <tbody>
               {discharged.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-16 text-[#8E8E93]">
+                  <td colSpan={6} className="text-center py-16 text-[#8E8E93]">
                     <div className="flex flex-col items-center gap-2">
                       <Search className="w-8 h-8 opacity-30" />
                       <p className="font-medium text-[14px]">No discharged patients</p>
@@ -74,7 +74,6 @@ export default function Discharged({ patients, onViewPatient, onReadmit, onAddTo
               ) : (
                 discharged.map((p) => (
                   <tr key={p.id} className="ios-separator last:[border-bottom:none]">
-                    <td className="px-5 py-3 font-mono text-[#8E8E93] text-[12px]">{p.id}</td>
                     <td className="px-5 py-3 font-medium text-[#000000]">{p.name}</td>
                     <td className="px-5 py-3">
                       <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#8E8E93]/12 text-[#8E8E93]">

@@ -30,7 +30,6 @@ export type AdmissionType = 'Independent' | 'High Support' | 'Minor' | 'Discharg
 export type PatientStatus = 'Action Needed' | 'Due Soon' | 'On Track' | 'Upcoming' | 'Discharged'
 export type AssessmentResult = 'Pass' | 'Fail'
 export type NoteType = 'Clinical' | 'Administrative' | 'Legal'
-export type BillingStatus = 'Paid' | 'Pending'
 export type DischargeReason = 'Capacity Regained' | 'Voluntary' | 'Clinical Decision'
 
 export interface Assessment {
@@ -60,19 +59,9 @@ export interface Note {
   type: NoteType
 }
 
-export interface BillingPeriod {
-  id: string
-  period: string
-  from: string
-  to: string
-  subCategory: string
-  amount: number
-  status: BillingStatus
-}
-
 export interface Patient {
-  id: string            // UUID from Supabase patients.id
-  patientCode: string   // e.g. PT-001
+  id: string
+  patientCode: string
   name: string
   age: number
   gender: string
@@ -85,19 +74,21 @@ export interface Patient {
   treatingDoctor: string
   admissionType: AdmissionType
   admissionDate: string
+  hsStartDate: string        // date current HS/CHS sub-category began (for renewal/CA scheduling)
+  hsOriginDate: string       // date HS originally began (for milestone boundary display)
   currentSubStatus: string
   daysAdmitted: number
   nextActionDue: string
   nextActionType: string
   status: PatientStatus
+  statusReason: string
   assessments: Assessment[]
   admissionHistory: AdmissionEpisode[]
   notes: Note[]
-  billingPeriods: BillingPeriod[]
+  patientTransfers: { id: string; date: string; fromType: string; toType: string; reason: string }[]
   dischargeDate?: string
   dischargeReason?: DischargeReason
   totalStay?: string
-  // raw DB IDs needed for writes
   activeAdmissionId?: string
 }
 
@@ -143,7 +134,7 @@ export const initialStaff = [
 
 // ─── DB → UI Mappers ─────────────────────────────────────────────────────────
 
-import type { DbPatient, DbAdmission, DbTransfer, DbNotification, DbAssessment, DbBillingPeriod, DbNote } from './supabase'
+import type { DbPatient, DbAdmission, DbTransfer, DbNotification, DbAssessment, DbNote } from './supabase'
 import { getDaysAdmitted, getNextRenewalDate, getNextAssessmentDate, getDaysUntil } from './db'
 
 function mapPatientStatus(
@@ -152,23 +143,28 @@ function mapPatientStatus(
   subCategory: string | null,
   lastAssessmentDate: string | null,
   admissionDate: string,
-): PatientStatus {
-  if (admissionType === 'Discharged') return 'Discharged'
-  if (admissionType === 'Minor') return 'On Track'
+): { status: PatientStatus; reason: string } {
+  if (admissionType === 'Discharged') return { status: 'Discharged', reason: '' }
+  if (admissionType === 'Minor') return { status: 'On Track', reason: '' }
+  if (admissionType === 'Independent') return { status: 'On Track', reason: '' }
   if (admissionType === 'High Support') {
     const renewal = getNextRenewalDate(admissionDate, subCategory)
     const daysUntilRenewal = getDaysUntil(renewal)
-    if (daysUntilRenewal < 0) return 'Action Needed'
-    if (daysUntilRenewal <= 3) return 'Due Soon'
-    if (daysUntilRenewal <= 7) return 'Upcoming'
+    if (daysUntilRenewal < 0) return { status: 'Action Needed', reason: `${subCategory} renewal overdue by ${Math.abs(daysUntilRenewal)}d` }
+    if (daysUntilRenewal <= 3) return { status: 'Due Soon', reason: `${subCategory} renewal due in ${daysUntilRenewal}d` }
+    if (daysUntilRenewal <= 7) return { status: 'Upcoming', reason: `${subCategory} renewal in ${daysUntilRenewal}d` }
+    if (subCategory && subCategory.startsWith('CHS')) {
+      const effectiveLastCA = lastAssessmentDate && lastAssessmentDate > admissionDate
+        ? lastAssessmentDate
+        : admissionDate
+      const nextAssess = getNextAssessmentDate(admissionDate, effectiveLastCA, admissionType, subCategory)
+      const daysUntilAssess = getDaysUntil(nextAssess)
+      if (daysUntilAssess < 0) return { status: 'Action Needed', reason: `CA overdue by ${Math.abs(daysUntilAssess)}d` }
+      if (daysUntilAssess <= 2) return { status: 'Due Soon', reason: `CA due in ${daysUntilAssess}d` }
+      if (daysUntilAssess <= 7) return { status: 'Upcoming', reason: `CA due in ${daysUntilAssess}d` }
+    }
   }
-  // Assessment status (Independent or CHS)
-  const nextAssess = getNextAssessmentDate(admissionDate, lastAssessmentDate, admissionType, subCategory)
-  const daysUntilAssess = getDaysUntil(nextAssess)
-  if (daysUntilAssess < 0) return 'Action Needed'
-  if (daysUntilAssess <= 2) return 'Due Soon'
-  if (daysUntilAssess <= 7) return 'Upcoming'
-  return 'On Track'
+  return { status: 'On Track', reason: '' }
 }
 
 export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
@@ -197,30 +193,36 @@ export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
       type: (n.note_type ?? 'Clinical') as NoteType,
     }))
 
-  const billingPeriods: BillingPeriod[] = (dbPatient.billing_periods ?? [])
-    .sort((a, b) => new Date(a.from_date).getTime() - new Date(b.from_date).getTime())
-    .map((b, i) => ({
-      id: b.id,
-      period: b.period_label ?? `Period ${i + 1}`,
-      from: b.from_date,
-      to: b.to_date,
-      subCategory: b.sub_category ?? '',
-      amount: b.amount ?? 0,
-      status: b.status,
-    }))
+  const sortedTransfers = (dbPatient.transfers ?? [])
+    .sort((a, b) => new Date(a.transfer_date).getTime() - new Date(b.transfer_date).getTime())
 
   const admissionHistory: AdmissionEpisode[] = admissions
     .sort((a, b) => new Date(a.admission_date).getTime() - new Date(b.admission_date).getTime())
-    .map(a => ({
-      id: a.id,
-      type: (a.status === 'Discharged' ? 'Discharged' : a.admission_type) as AdmissionType,
-      subType: a.sub_category ?? a.admission_type,
-      startDate: a.admission_date,
-      endDate: a.discharge_date,
-      reasonForEnd: a.discharge_reason ?? '',
-      duration: a.discharge_date
-        ? Math.floor((new Date(a.discharge_date).getTime() - new Date(a.admission_date).getTime()) / 86400000)
-        : null,
+    .map(a => {
+      // Use the fromType of the earliest transfer for this admission to get the original type
+      const firstTransfer = sortedTransfers.find(t => t.from_admission_id === a.id || t.to_admission_id === a.id)
+      const originalType: AdmissionType = firstTransfer
+        ? firstTransfer.from_type as AdmissionType
+        : a.admission_type as AdmissionType
+      return {
+        id: a.id,
+        type: (a.status === 'Discharged' ? 'Discharged' : originalType) as AdmissionType,
+        subType: a.sub_category ?? a.admission_type,
+        startDate: a.admission_date,
+        endDate: a.discharge_date,
+        reasonForEnd: a.discharge_reason ?? '',
+        duration: a.discharge_date
+          ? Math.floor((new Date(a.discharge_date).getTime() - new Date(a.admission_date).getTime()) / 86400000)
+          : null,
+      }
+    })
+
+  const patientTransfers = sortedTransfers.map(t => ({
+      id: t.id,
+      date: t.transfer_date,
+      fromType: t.from_type ?? '',
+      toType: t.to_type ?? '',
+      reason: t.reason ?? '',
     }))
 
   const isActive = !!activeAdmission
@@ -231,6 +233,22 @@ export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
   const subCategory = activeAdmission?.sub_category ?? null
   const daysAdmitted = admissionDate ? getDaysAdmitted(admissionDate) : 0
 
+  // hsStartDate: date the current HS/CHS sub-category began.
+  // For patients shifted from Independent → HS: use that transfer date.
+  // For patients admitted directly as HS: use admissionDate.
+  // For CHS sub-category shifts: use the transfer date into the current sub-category.
+  const currentSubCat = activeAdmission?.sub_category ?? null
+  const transferIntoCurrentSub = patientTransfers
+    .filter(t => t.toType === currentSubCat)
+    .slice(-1)[0]
+  const transferFromIndependent = patientTransfers
+    .filter(t => t.fromType === 'Independent' && (t.toType === 'HS ≤30 days' || t.toType.startsWith('CHS')))
+    .slice(-1)[0]
+  const hsStartDate = transferIntoCurrentSub?.date ?? transferFromIndependent?.date ?? admissionDate
+  // hsOriginDate: the original date HS began (for milestone boundary calculations)
+  // This is the admissionDate for direct HS admissions, or the Independent→HS transfer date
+  const hsOriginDate = transferFromIndependent?.date ?? admissionDate
+
   const lastAssessmentDate = assessments.slice(-1)[0]?.date ?? null
 
   // Compute next action
@@ -238,13 +256,9 @@ export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
   let nextActionType = '—'
   if (isActive) {
     if (admissionType === 'High Support') {
-      const renewal = getNextRenewalDate(admissionDate, subCategory)
+      const renewal = getNextRenewalDate(hsStartDate, subCategory)
       nextActionDue = renewal.toISOString().split('T')[0]
       nextActionType = subCategory === 'HS ≤30 days' ? 'Shift to CHS' : 'CHS Renewal'
-    } else if (admissionType === 'Independent') {
-      const assess = getNextAssessmentDate(admissionDate, lastAssessmentDate, 'Independent', null)
-      nextActionDue = assess.toISOString().split('T')[0]
-      nextActionType = 'Capacity Assessment'
     } else if (admissionType === 'Minor') {
       // Compute 18th birthday
       const dob = new Date(dbPatient.date_of_birth)
@@ -255,7 +269,7 @@ export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
     }
   }
 
-  const status = mapPatientStatus(admissionType, daysAdmitted, subCategory, lastAssessmentDate, admissionDate)
+  const { status, reason: statusReason } = mapPatientStatus(admissionType, daysAdmitted, subCategory, lastAssessmentDate, hsStartDate)
 
   // Discharge info
   const dischargedAdmission = admissions.find(a => a.status === 'Discharged' && !activeAdmission)
@@ -282,15 +296,18 @@ export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
     treatingDoctor: dbPatient.treating_doctor ?? '',
     admissionType,
     admissionDate,
+    hsStartDate,
+    hsOriginDate,
     currentSubStatus: subCategory ?? admissionType,
     daysAdmitted: isActive ? daysAdmitted : 0,
     nextActionDue,
     nextActionType,
     status,
+    statusReason,
     assessments,
     admissionHistory,
     notes,
-    billingPeriods,
+    patientTransfers,
     dischargeDate,
     dischargeReason: dischargedAdmission?.discharge_reason as DischargeReason | undefined,
     totalStay: totalStayDays !== null ? `${totalStayDays} days` : undefined,
