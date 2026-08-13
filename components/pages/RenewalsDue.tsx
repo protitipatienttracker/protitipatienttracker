@@ -41,7 +41,7 @@ export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpd
         patient_id: renewModal.id,
         admission_id: renewModal.activeAdmissionId,
         note_date: new Date().toISOString().split('T')[0],
-        author: 'Arjun Sathe',
+        author: 'Staff',
         note_type: 'Clinical',
         content: `Renewal to ${nextSub}: ${renewNotes.trim()}`,
       })

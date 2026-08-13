@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
-import { Save, Plus, UserX, Loader2 } from 'lucide-react'
+import { Save, Plus, UserX, Loader2, ShieldCheck } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import {
   fetchStaff, addStaffMember, updateStaffStatus,
@@ -34,9 +35,11 @@ function Row({ label, value, color }: { label: string; value: string; color?: st
 interface Props {
   onAddToast: (type: 'success' | 'error' | 'info' | 'warning', title: string, message?: string) => void
   initialSection?: string
+  username?: string
 }
 
-export default function Settings({ onAddToast, initialSection }: Props) {
+export default function Settings({ onAddToast, initialSection, username }: Props) {
+  const isAdmin = username?.toLowerCase() === 'arjun.sathe'
   const [section, setSection] = useState(initialSection ?? 'Facility Info')
   const [staff, setStaff] = useState<DbStaff[]>([])
   const [staffLoading, setStaffLoading] = useState(true)
@@ -52,8 +55,12 @@ export default function Settings({ onAddToast, initialSection }: Props) {
     notifyMinorTurning18: true,
   })
   const [settingsLoading, setSettingsLoading] = useState(true)
+  const [newUser, setNewUser] = useState({ username: '', password: '' })
+  const [userLoading, setUserLoading] = useState(false)
+  const [managedUsers, setManagedUsers] = useState<{ username: string; password: string }[]>([])
+  const [editingPassword, setEditingPassword] = useState<Record<string, string>>({})
 
-  const sections = ['Facility Info', 'Staff Management', 'Notification Rules', 'Admission Rules', 'How to Use']
+  const sections = ['Facility Info', 'Staff Management', 'Notification Rules', 'Admission Rules', 'How to Use', ...(isAdmin ? ['Create Users'] : [])]
 
   const loadStaff = useCallback(async () => {
     setStaffLoading(true)
@@ -113,6 +120,67 @@ export default function Settings({ onAddToast, initialSection }: Props) {
     onAddToast('info', 'Staff status updated')
   }
 
+  // Load managed users from settings on mount
+  useEffect(() => {
+    if (!isAdmin) return
+    supabase.from('settings').select('value').eq('key', 'managed_users').single()
+      .then(({ data }) => {
+        if (data?.value) {
+          try { setManagedUsers(JSON.parse(data.value)) } catch {}
+        }
+      })
+  }, [isAdmin])
+
+  async function saveManagedUsers(users: { username: string; password: string }[]) {
+    await supabase.from('settings').upsert({ key: 'managed_users', value: JSON.stringify(users) }, { onConflict: 'key' })
+    setManagedUsers(users)
+  }
+
+  async function handleCreateUser() {
+    const uname = newUser.username.toLowerCase().trim()
+    if (!uname || newUser.password.length < 8) {
+      onAddToast('error', 'Username required and password must be 8+ characters')
+      return
+    }
+    if (managedUsers.some(u => u.username === uname)) {
+      onAddToast('error', 'Username already exists')
+      return
+    }
+    setUserLoading(true)
+    const email = `${uname}@pratiti.local`
+    // Get current admin session to restore after signUp
+    const { data: { session: adminSession } } = await supabase.auth.getSession()
+    const { error } = await supabase.auth.signUp({ email, password: newUser.password })
+    // Immediately restore admin session
+    if (adminSession) {
+      await supabase.auth.setSession({ access_token: adminSession.access_token, refresh_token: adminSession.refresh_token })
+    }
+    setUserLoading(false)
+    if (error && !error.message.includes('already registered')) {
+      onAddToast('error', 'Failed to create user', error.message)
+      return
+    }
+    const updated = [...managedUsers, { username: uname, password: newUser.password }]
+    await saveManagedUsers(updated)
+    onAddToast('success', 'User created', `${uname} can now sign in`)
+    setNewUser({ username: '', password: '' })
+  }
+
+  async function handleUpdatePassword(uname: string) {
+    const newPwd = editingPassword[uname] ?? ''
+    if (newPwd.length < 8) { onAddToast('error', 'Password must be 8+ characters'); return }
+    const updated = managedUsers.map(u => u.username === uname ? { ...u, password: newPwd } : u)
+    await saveManagedUsers(updated)
+    setEditingPassword(p => { const n = { ...p }; delete n[uname]; return n })
+    onAddToast('success', 'Password updated')
+  }
+
+  async function handleDeleteUser(uname: string) {
+    const updated = managedUsers.filter(u => u.username !== uname)
+    await saveManagedUsers(updated)
+    onAddToast('info', 'User removed')
+  }
+
   async function handleAddStaff() {
     if (!newStaff.name.trim() || !newStaff.email.trim()) {
       onAddToast('error', 'Please fill in name and email')
@@ -140,13 +208,14 @@ export default function Settings({ onAddToast, initialSection }: Props) {
             key={s}
             onClick={() => setSection(s)}
             className={cn(
-              'w-full text-left px-4 py-2.5 text-[14px] rounded-xl transition-colors',
+              'w-full text-left px-4 py-2.5 text-[14px] rounded-xl transition-colors whitespace-nowrap',
               section === s ? 'bg-[#007AFF] text-white font-medium' : 'text-[#3A3A3C] hover:bg-[#E5E5EA] active:bg-[#D1D1D6]'
             )}
           >
             {s}
           </button>
         ))}
+        <p className="text-[13px] text-[#8E8E93] px-2 mt-2 hidden sm:block">signed in as: {username || '—'}</p>
       </div>
 
       {/* Content */}
@@ -407,6 +476,82 @@ export default function Settings({ onAddToast, initialSection }: Props) {
               </div>
             </div>
 
+          </div>
+        )}
+
+        {section === 'Create Users' && isAdmin && (
+          <div className="space-y-4">
+            <div className="ios-card p-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-[#007AFF]" />
+                <h2 className="text-[17px] font-semibold text-[#000000]">Create New User</h2>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Username</label>
+                  <input
+                    value={newUser.username}
+                    onChange={e => setNewUser(u => ({ ...u, username: e.target.value }))}
+                    placeholder="e.g. priya.sharma"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    className="w-full bg-[#F2F2F7] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Password</label>
+                  <input
+                    type="text"
+                    value={newUser.password}
+                    onChange={e => setNewUser(u => ({ ...u, password: e.target.value }))}
+                    placeholder="Min. 8 characters"
+                    className="w-full bg-[#F2F2F7] rounded-xl px-4 py-3 text-[14px] font-mono outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button onClick={handleCreateUser} disabled={userLoading}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-[#007AFF] text-white rounded-xl text-[14px] font-medium active:opacity-80 disabled:opacity-50">
+                  {userLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  Create User
+                </button>
+              </div>
+            </div>
+
+            <div className="ios-card overflow-hidden">
+              <div className="px-6 py-4 ios-separator">
+                <h2 className="text-[15px] font-semibold text-[#000000]">All Users</h2>
+              </div>
+              {managedUsers.length === 0 ? (
+                <p className="text-center py-10 text-[#8E8E93] text-[14px]">No users created yet.</p>
+              ) : (
+                <div className="divide-y divide-[rgba(60,60,67,0.1)]">
+                  {managedUsers.map(u => (
+                    <div key={u.username} className="px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3">
+                      <p className="text-[14px] font-medium text-[#000000] w-40 shrink-0">{u.username}</p>
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="text"
+                          value={editingPassword[u.username] ?? u.password}
+                          onChange={e => setEditingPassword(p => ({ ...p, [u.username]: e.target.value }))}
+                          className="flex-1 bg-[#F2F2F7] rounded-xl px-3 py-2 text-[13px] font-mono outline-none focus:ring-2 focus:ring-[#007AFF]/30"
+                        />
+                        {editingPassword[u.username] !== undefined && editingPassword[u.username] !== u.password && (
+                          <button onClick={() => handleUpdatePassword(u.username)}
+                            className="px-3 py-2 bg-[#34C759] text-white rounded-xl text-[12px] font-medium active:opacity-80 shrink-0">
+                            Save
+                          </button>
+                        )}
+                      </div>
+                      <button onClick={() => handleDeleteUser(u.username)}
+                        className="p-2 rounded-lg text-[#8E8E93] hover:text-[#FF3B30] hover:bg-[#FF3B30]/8 transition-colors shrink-0">
+                        <UserX className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -244,7 +244,6 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
           AS
         </div>
         <div className="min-w-0">
-          <p className="text-[14px] font-medium text-white truncate">Arjun Sathe</p>
         </div>
       </div>
     </aside>

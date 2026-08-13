@@ -18,7 +18,7 @@ interface Props {
 
 export default function Transfers({ transfers, patients, onAddTransfer, onAddToast, onRefreshData }: Props) {
   const [modal, setModal] = useState(false)
-  const [form, setForm] = useState({ patientId: '', fromType: '', toType: '', reason: '', triggeredBy: 'Arjun Sathe', notes: '' })
+  const [form, setForm] = useState({ patientId: '', fromType: '', toType: '', reason: '', triggeredBy: '', notes: '' })
 
   async function handleSubmit() {
     const patient = patients.find(p => p.id === form.patientId)
@@ -42,7 +42,7 @@ export default function Transfers({ transfers, patients, onAddTransfer, onAddToa
 
     onAddToast('success', 'Transfer recorded', `${patient.name}: ${form.fromType} → ${form.toType}`)
     setModal(false)
-    setForm({ patientId: '', fromType: '', toType: '', reason: '', triggeredBy: 'Arjun Sathe', notes: '' })
+    setForm({ patientId: '', fromType: '', toType: '', reason: '', triggeredBy: '', notes: '' })
     if (onRefreshData) await onRefreshData()
   }
 

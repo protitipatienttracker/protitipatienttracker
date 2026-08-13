@@ -78,7 +78,6 @@ export default function Header({ pageId, breadcrumbs, notifications, onBellClick
 
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
-            <p className="text-[13px] font-medium text-[#000000]">Arjun Sathe</p>
           </div>
 
           <button

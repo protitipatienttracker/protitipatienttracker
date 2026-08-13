@@ -366,8 +366,8 @@ export default function Page() {
       case 'calendar': return <CalendarPage patients={patients} onViewPatient={viewPatient} />
       case 'occupancy-report': case 'admission-analytics': return <OccupancyReport patients={patients} />
       case 'active-admissions': return <AllPatients patients={patients.filter(p => p.admissionType !== 'Discharged')} onViewPatient={viewPatient} onNewAdmission={() => navigate('new-admission')} onRefreshData={loadData} onAddToast={addToast} />
-      case 'notification-preferences': return <Settings onAddToast={addToast} initialSection="Notification Rules" />
-      case 'settings': return <Settings onAddToast={addToast} />
+      case 'notification-preferences': return <Settings onAddToast={addToast} initialSection="Notification Rules" username={user?.email?.replace('@pratiti.local', '') ?? ''} />
+      case 'settings': return <Settings onAddToast={addToast} username={user?.email?.replace('@pratiti.local', '') ?? ''} />
       default: return null
     }
   }

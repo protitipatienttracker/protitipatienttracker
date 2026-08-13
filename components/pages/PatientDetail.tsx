@@ -85,7 +85,7 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
 
   const [newAssessment, setNewAssessment] = useState({
     date: new Date().toISOString().split('T')[0],
-    conductedBy: 'Arjun Sathe',
+    conductedBy: '',
     result: 'Pass' as 'Pass' | 'Fail',
     notes: '',
   })
@@ -188,7 +188,7 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
       patient_id: patient.id, from_admission_id: patient.activeAdmissionId,
       to_admission_id: patient.activeAdmissionId, transfer_date: shiftDate,
       from_type: patient.currentSubStatus, to_type: newSub,
-      reason: shiftReason, triggered_by: 'Arjun Sathe', notes: null,
+      reason: shiftReason, triggered_by: 'Staff', notes: null,
     })
     setShiftDone(true)
     if (newSub === 'HS ≤30 days') {
@@ -207,7 +207,7 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
     if (!noteText.trim() || !patient.activeAdmissionId) return
     const { error } = await addClinicalNote({
       patient_id: patient.id, admission_id: patient.activeAdmissionId,
-      note_date: noteDate, author: 'Arjun Sathe', note_type: noteType, content: noteText,
+      note_date: noteDate, author: 'Staff', note_type: noteType, content: noteText,
     })
     if (error) { onAddToast('error', 'Failed', error.message); return }
     setNoteText(''); setShowNoteForm(false)

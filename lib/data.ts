@@ -121,10 +121,9 @@ export const initialPatients: Patient[] = []
 export const initialTransfers: Transfer[] = []
 export const initialNotifications: Notification[] = []
 
-export const DOCTORS = ['Arjun Sathe', 'Dr. Rajan Pillai', 'Dr. Anand Krishnan', 'Dr. Pradeep Nair']
+export const DOCTORS = ['Dr. Rajan Pillai', 'Dr. Anand Krishnan', 'Dr. Pradeep Nair']
 
 export const initialStaff = [
-  { id: 'S001', name: 'Arjun Sathe', role: 'Psychiatrist', email: 'arjun.sathe@protiti.in', status: 'Active' },
   { id: 'S002', name: 'Dr. Rajan Pillai', role: 'Psychiatrist', email: 'rajan.pillai@caretrack.in', status: 'Active' },
   { id: 'S003', name: 'Dr. Anand Krishnan', role: 'Psychiatrist', email: 'anand.krishnan@caretrack.in', status: 'Active' },
   { id: 'S004', name: 'Dr. Pradeep Nair', role: 'Consultant', email: 'pradeep.nair@caretrack.in', status: 'Active' },

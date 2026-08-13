@@ -124,7 +124,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
       emergencyContactPhone: '',
       address: personal.address,
       treatingDoctor: personal.doctor,
-      admittedBy: 'Arjun Sathe',
+      admittedBy: '',
       admissionType,
       admissionDate: personal.admissionDate,
       currentSubStatus: admissionType === 'High Support' ? 'HS ≤30 days' : admissionType === 'Independent' ? 'Independent' : 'Minor',
