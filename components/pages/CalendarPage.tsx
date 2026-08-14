@@ -445,7 +445,7 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
           <h3 className="text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-3">Filters</h3>
           <div className="space-y-2.5">
             {LEGEND.map(l => (
-              <label key={l.type} className="flex items-center gap-2.5 cursor-pointer">
+              <div key={l.type} onClick={() => toggleFilter(l.type)} className="flex items-center gap-2.5 cursor-pointer select-none">
                 <div className={cn('w-4 h-4 rounded-md flex items-center justify-center transition-colors',
                   activeFilters.has(l.type) ? `${EVENT_DOT[l.type]}` : 'bg-[#E5E5EA]'
                 )}>
@@ -455,8 +455,8 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
                     </svg>
                   )}
                 </div>
-                <span className="text-[13px] text-[#3A3A3C]" onClick={() => toggleFilter(l.type)}>{l.label}</span>
-              </label>
+                <span className="text-[13px] text-[#3A3A3C]">{l.label}</span>
+              </div>
             ))}
           </div>
           <div className="mt-3 pt-3 ios-separator flex gap-3">
