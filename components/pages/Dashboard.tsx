@@ -59,13 +59,17 @@ interface StatCardProps {
   value: string | number
   sub: string
   subColor?: string
+  onClick?: () => void
 }
 
-function StatCard({ icon, iconBg, label, value, sub, subColor = 'text-[#8E8E93]' }: StatCardProps) {
+function StatCard({ icon, iconBg, label, value, sub, subColor = 'text-[#8E8E93]', onClick }: StatCardProps) {
   const animatedValue = useAnimatedNumber(typeof value === 'number' ? value : 0)
   const displayValue = typeof value === 'number' ? animatedValue : value
   return (
-    <div className="ios-card p-4 sm:p-5">
+    <div
+      className={cn('ios-card p-4 sm:p-5', onClick && 'cursor-pointer active:scale-[0.97] transition-transform')}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between mb-2 sm:mb-3">
         <p className="text-[12px] sm:text-[13px] font-medium text-[#8E8E93]">{label}</p>
         <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${iconBg}`}>{icon}</span>
@@ -152,6 +156,7 @@ export default function Dashboard({ patients, onNavigate }: Props) {
           value={active.length}
           sub={`${recentAdmissions} this week`}
           subColor="text-[#34C759]"
+          onClick={() => onNavigate('all-patients')}
         />
         <StatCard
           icon={<Clock className="w-4 h-4 text-[#FF9500]" />}
@@ -160,6 +165,7 @@ export default function Dashboard({ patients, onNavigate }: Props) {
           value={renewalsDue.length}
           sub={overdueRenewals > 0 ? `${overdueRenewals} overdue` : 'All on track'}
           subColor={overdueRenewals > 0 ? 'text-[#FF3B30]' : 'text-[#34C759]'}
+          onClick={() => onNavigate('renewals-due')}
         />
         <StatCard
           icon={<Brain className="w-4 h-4 text-[#5856D6]" />}
@@ -167,6 +173,7 @@ export default function Dashboard({ patients, onNavigate }: Props) {
           label="Assessments Due"
           value={assessmentsToday.length}
           sub={assessmentsToday[0] ? `Next: ${assessmentsToday[0].name}` : 'None pending'}
+          onClick={() => onNavigate('capacity-assessments')}
         />
         <StatCard
           icon={<BedDouble className="w-4 h-4 text-[#007AFF]" />}
@@ -174,6 +181,7 @@ export default function Dashboard({ patients, onNavigate }: Props) {
           label="Beds Available"
           value={beds}
           sub={`Out of 30 total`}
+          onClick={() => onNavigate('occupancy-report')}
         />
       </div>
 

@@ -1,6 +1,6 @@
 'use client'
 import { useState } from 'react'
-import { Plus, Eye } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { StatusBadge, AdmissionTypeBadge } from '@/components/ui/badge-status'
 import { Modal } from '@/components/ui/modal'
 import { formatDate, daysBetween, DOCTORS, type Patient } from '@/lib/data'
@@ -112,7 +112,7 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="bg-[#F2F2F7]/60">
-                  {['Patient', 'Type', 'Last Assessment', 'Result', 'Next Due', 'Status', ''].map(h => (
+                  {['Patient', 'Type', 'Last Assessment', 'Result', 'Next Due', 'Status'].map(h => (
                     <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
                   ))}
                 </tr>
@@ -127,21 +127,15 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
                     const last = p.assessments.slice(-1)[0]
                     const label = last?.nextDue ? daysDiffLabel(last.nextDue) : null
                     return (
-                      <tr key={p.id} className="ios-separator last:[border-bottom:none]">
+                      <tr key={p.id} onClick={() => onViewPatient(p.id)} className="ios-separator last:[border-bottom:none] cursor-pointer hover:bg-[#F2F2F7]/60 transition-colors">
                         <td className="px-5 py-3">
                           <p className="font-medium text-[#000000]">{p.name}</p>
-                          <p className="text-[#8E8E93] font-mono text-[11px]">{p.id}</p>
                         </td>
                         <td className="px-5 py-3"><AdmissionTypeBadge type={p.admissionType} /></td>
                         <td className="px-5 py-3 text-[#3A3A3C]">{last ? formatDate(last.date) : '—'}</td>
                         <td className="px-5 py-3">{last ? <StatusBadge status={last.result} /> : '—'}</td>
                         <td className="px-5 py-3 text-[#3A3A3C]">{last?.nextDue ? formatDate(last.nextDue) : '—'}</td>
                         <td className={cn('px-5 py-3', label?.cls ?? '')}>{label?.text ?? '—'}</td>
-                        <td className="px-5 py-3">
-                          <button onClick={() => onViewPatient(p.id)} className="p-2 rounded-lg text-[#8E8E93] hover:text-[#007AFF] hover:bg-[#007AFF]/8">
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        </td>
                       </tr>
                     )
                   })
@@ -165,11 +159,10 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
               </thead>
               <tbody>
                 {allAssessments.map((a) => (
-                  <tr key={a.id} className="ios-separator last:[border-bottom:none]">
+                  <tr key={a.id} onClick={() => onViewPatient(a.patientId)} className="ios-separator last:[border-bottom:none] cursor-pointer hover:bg-[#F2F2F7]/60 transition-colors">
                     <td className="px-5 py-3 text-[#3A3A3C]">{formatDate(a.date)}</td>
                     <td className="px-5 py-3">
                       <p className="font-medium text-[#000000]">{a.patientName}</p>
-                      <p className="text-[#8E8E93] font-mono text-[11px]">{a.patientId}</p>
                     </td>
                     <td className="px-5 py-3"><AdmissionTypeBadge type={a.admissionType} /></td>
                     <td className="px-5 py-3 text-[#3A3A3C]">{a.conductedBy}</td>

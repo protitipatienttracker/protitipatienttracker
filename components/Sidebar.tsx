@@ -83,6 +83,7 @@ export default function Sidebar({ activePage, onNavigate, onSearch, mobileOpen, 
       items: [
         { id: 'all-patients', label: 'All Patients', icon: <Users className="w-[18px] h-[18px]" /> },
         { id: 'new-admission', label: 'New Admission', icon: <UserPlus className="w-[18px] h-[18px]" /> },
+        { id: 'renewals-due', label: 'Renewals Due', icon: <Clock className="w-[18px] h-[18px]" />, badge: overdueRenewals || undefined },
         { id: 'transfers', label: 'Transfers', icon: <ArrowLeftRight className="w-[18px] h-[18px]" /> },
         { id: 'discharged', label: 'Discharged', icon: <Archive className="w-[18px] h-[18px]" /> },
       ],
