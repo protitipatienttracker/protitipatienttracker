@@ -36,73 +36,69 @@ export default function Discharged({ patients, onViewPatient, onReadmit, onAddTo
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
-      <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex flex-wrap gap-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-[9px] w-[14px] h-[14px] text-[#8E8E93]" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search"
-              className="pl-8 pr-3 py-2 bg-[#E5E5EA]/60 rounded-xl text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 w-full sm:w-48 placeholder-[#8E8E93]" />
+      <div className="border-b border-[rgba(60,60,67,0.1)] pb-4">
+        <div className="flex flex-wrap gap-2 items-center justify-between">
+          <div>
+            <h1 className="text-[20px] font-black text-[#000000] tracking-tight">Discharged</h1>
+            <p className="text-[12px] text-[#8E8E93] mt-0.5">{discharged.length} patients</p>
           </div>
-          <select value={reasonFilter} onChange={e => setReasonFilter(e.target.value)}
-            className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]">
-            {['All', 'Capacity Regained', 'Voluntary', 'Clinical Decision'].map(o => <option key={o}>{o}</option>)}
-          </select>
+          <div className="flex flex-wrap gap-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-[9px] w-[14px] h-[14px] text-[#8E8E93]" />
+              <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search"
+                className="pl-8 pr-3 py-2 bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 w-full sm:w-48 placeholder-[#C7C7CC]" />
+            </div>
+            <select value={reasonFilter} onChange={e => setReasonFilter(e.target.value)}
+              className="bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] rounded-xl px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]">
+              {['All', 'Capacity Regained', 'Voluntary', 'Clinical Decision'].map(o => <option key={o}>{o}</option>)}
+            </select>
+          </div>
         </div>
-        <span className="text-[13px] text-[#8E8E93]">{discharged.length} discharged</span>
       </div>
 
-      <div className="ios-card overflow-hidden">
+      <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="bg-[#F2F2F7]/60">
+              <tr className="bg-[#F9F9F9] border-b border-[rgba(60,60,67,0.08)]">
                 {['Name', 'Prior Type', 'Discharged', 'Stay', 'Reason', ''].map(h => (
-                  <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
+                  <th key={h} className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {discharged.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-16 text-[#8E8E93]">
-                    <div className="flex flex-col items-center gap-2">
-                      <Search className="w-8 h-8 opacity-30" />
-                      <p className="font-medium text-[14px]">No discharged patients</p>
-                    </div>
+                <tr><td colSpan={6} className="text-center py-16">
+                  <p className="text-[15px] font-bold text-[#3A3A3C]">No discharged patients</p>
+                  <p className="text-[13px] text-[#8E8E93] mt-1">Discharged patients will appear here</p>
+                </td></tr>
+              ) : discharged.map((p) => (
+                <tr key={p.id} className="border-b border-[rgba(60,60,67,0.06)] last:border-0">
+                  <td className="px-5 py-3.5 font-semibold text-[#000000]">{p.name}</td>
+                  <td className="px-5 py-3.5">
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#8E8E93]/12 text-[#8E8E93]">
+                      {p.admissionHistory.slice(-2, -1)[0]?.type || 'High Support'}
+                    </span>
+                  </td>
+                  <td className="px-5 py-3.5 text-[#3A3A3C]">{p.dischargeDate ? formatDate(p.dischargeDate) : '—'}</td>
+                  <td className="px-5 py-3.5">
+                    <span className="font-bold text-[#000000]">{p.totalStay || '—'}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className={cn('px-2.5 py-1 rounded-full text-[11px] font-semibold', {
+                      'bg-[#34C759]/12 text-[#34C759]': p.dischargeReason === 'Capacity Regained',
+                      'bg-[#007AFF]/12 text-[#007AFF]': p.dischargeReason === 'Voluntary',
+                      'bg-[#8E8E93]/12 text-[#8E8E93]': p.dischargeReason === 'Clinical Decision',
+                    })}>{p.dischargeReason}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <button onClick={() => setConfirmPatient(p)}
+                      className="flex items-center gap-1.5 text-[13px] text-[#007AFF] font-semibold active:opacity-60">
+                      <RefreshCw className="w-3.5 h-3.5" /> Readmit
+                    </button>
                   </td>
                 </tr>
-              ) : (
-                discharged.map((p) => (
-                  <tr key={p.id} className="ios-separator last:[border-bottom:none]">
-                    <td className="px-5 py-3 font-medium text-[#000000]">{p.name}</td>
-                    <td className="px-5 py-3">
-                      <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#8E8E93]/12 text-[#8E8E93]">
-                        {p.admissionHistory.slice(-2, -1)[0]?.type || 'High Support'}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-[#3A3A3C]">{p.dischargeDate ? formatDate(p.dischargeDate) : '—'}</td>
-                    <td className="px-5 py-3 text-[#3A3A3C]">{p.totalStay || '—'}</td>
-                    <td className="px-5 py-3">
-                      <span className={cn('px-2.5 py-1 rounded-full text-[11px] font-semibold', {
-                        'bg-[#34C759]/12 text-[#34C759]': p.dischargeReason === 'Capacity Regained',
-                        'bg-[#007AFF]/12 text-[#007AFF]': p.dischargeReason === 'Voluntary',
-                        'bg-[#8E8E93]/12 text-[#8E8E93]': p.dischargeReason === 'Clinical Decision',
-                      })}>
-                        {p.dischargeReason}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <button
-                        onClick={() => setConfirmPatient(p)}
-                        className="flex items-center gap-1.5 text-[13px] text-[#007AFF] font-medium active:opacity-60"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" />
-                        Readmit
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>

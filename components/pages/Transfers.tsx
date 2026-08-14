@@ -48,52 +48,51 @@ export default function Transfers({ transfers, patients, onAddTransfer, onAddToa
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-semibold text-[#000000]">Transfers ({transfers.length})</h2>
-        <button
-          onClick={() => setModal(true)}
-          className="flex items-center gap-1.5 bg-[#007AFF] text-white px-4 py-2.5 rounded-xl text-[13px] font-medium active:opacity-80"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Record Transfer
+      <div className="flex items-center justify-between border-b border-[rgba(60,60,67,0.1)] pb-4">
+        <div>
+          <h1 className="text-[20px] font-black text-[#000000] tracking-tight">Transfers</h1>
+          <p className="text-[12px] text-[#8E8E93] mt-0.5">{transfers.length} records</p>
+        </div>
+        <button onClick={() => setModal(true)}
+          className="flex items-center gap-1.5 bg-[#007AFF] text-white px-4 py-2.5 rounded-xl text-[13px] font-semibold active:opacity-80">
+          <Plus className="w-3.5 h-3.5" /> Record Transfer
         </button>
       </div>
 
-      <div className="ios-card overflow-hidden">
+      <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-[13px]">
             <thead>
-              <tr className="bg-[#F2F2F7]/60">
+              <tr className="bg-[#F9F9F9] border-b border-[rgba(60,60,67,0.08)]">
                 {['Date', 'Patient', 'From', 'To', 'Reason', 'By', 'Notes'].map(h => (
-                  <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
+                  <th key={h} className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {transfers.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-16 text-[#8E8E93]">No transfers recorded</td>
+                <tr><td colSpan={7} className="text-center py-16">
+                  <p className="text-[15px] font-bold text-[#3A3A3C]">No transfers</p>
+                  <p className="text-[13px] text-[#8E8E93] mt-1">No transfers recorded yet</p>
+                </td></tr>
+              ) : transfers.map((t) => (
+                <tr key={t.id} className="border-b border-[rgba(60,60,67,0.06)] last:border-0">
+                  <td className="px-5 py-3.5 text-[#8E8E93]">{formatDate(t.date)}</td>
+                  <td className="px-5 py-3.5">
+                    <p className="font-semibold text-[#000000]">{t.patientName}</p>
+                    <p className="text-[#8E8E93] text-[11px]">{t.patientCode}</p>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#8E8E93]/12 text-[#8E8E93]">{t.fromType}</span>
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#007AFF]/12 text-[#007AFF]">{t.toType}</span>
+                  </td>
+                  <td className="px-5 py-3.5 text-[#3A3A3C]">{t.reason}</td>
+                  <td className="px-5 py-3.5 text-[#3A3A3C]">{t.triggeredBy}</td>
+                  <td className="px-5 py-3.5 text-[#8E8E93] max-w-xs truncate">{t.notes || '—'}</td>
                 </tr>
-              ) : (
-                transfers.map((t) => (
-                  <tr key={t.id} className="ios-separator last:[border-bottom:none]">
-                    <td className="px-5 py-3 text-[#8E8E93]">{formatDate(t.date)}</td>
-                    <td className="px-5 py-3">
-                      <p className="font-medium text-[#000000]">{t.patientName}</p>
-                      <p className="text-[#8E8E93] text-[11px]">{t.patientCode}</p>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#8E8E93]/12 text-[#8E8E93]">{t.fromType}</span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-[#007AFF]/12 text-[#007AFF]">{t.toType}</span>
-                    </td>
-                    <td className="px-5 py-3 text-[#3A3A3C]">{t.reason}</td>
-                    <td className="px-5 py-3 text-[#3A3A3C]">{t.triggeredBy}</td>
-                    <td className="px-5 py-3 text-[#8E8E93] max-w-xs truncate">{t.notes || '—'}</td>
-                  </tr>
-                ))
-              )}
+              ))}
             </tbody>
           </table>
         </div>

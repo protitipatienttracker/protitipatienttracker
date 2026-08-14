@@ -202,28 +202,29 @@ export default function Settings({ onAddToast, initialSection, username }: Props
   return (
     <div className="p-4 sm:p-6 flex flex-col sm:flex-row gap-4 sm:gap-6">
       {/* Left nav */}
-      <div className="flex sm:flex-col sm:w-48 shrink-0 gap-1 overflow-x-auto sm:overflow-visible">
+      <div className="flex sm:flex-col sm:w-52 shrink-0 gap-1 overflow-x-auto sm:overflow-visible">
+        <div className="hidden sm:block mb-2 pb-3 border-b border-[rgba(60,60,67,0.1)]">
+          <p className="text-[16px] font-black text-[#000000]">Settings</p>
+          <p className="text-[12px] text-[#8E8E93] mt-0.5">{username || '—'}</p>
+        </div>
         {sections.map(s => (
-          <button
-            key={s}
-            onClick={() => setSection(s)}
+          <button key={s} onClick={() => setSection(s)}
             className={cn(
-              'w-full text-left px-4 py-2.5 text-[14px] rounded-xl transition-colors whitespace-nowrap',
-              section === s ? 'bg-[#007AFF] text-white font-medium' : 'text-[#3A3A3C] hover:bg-[#E5E5EA] active:bg-[#D1D1D6]'
-            )}
-          >
-            {s}
-          </button>
+              'w-full text-left px-4 py-2.5 text-[13px] rounded-xl transition-colors whitespace-nowrap font-medium',
+              section === s ? 'bg-[#007AFF] text-white' : 'text-[#3A3A3C] hover:bg-[#F2F2F7] border border-transparent hover:border-[rgba(60,60,67,0.08)]'
+            )}>{s}</button>
         ))}
-        <p className="text-[13px] text-[#8E8E93] px-2 mt-2 hidden sm:block">signed in as: {username || '—'}</p>
       </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
 
         {section === 'Facility Info' && (
-          <div className="ios-card p-6 space-y-5">
-            <h2 className="text-[17px] font-semibold text-[#000000]">Facility Information</h2>
+          <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-6 space-y-5">
+            <div className="border-b border-[rgba(60,60,67,0.08)] pb-3">
+              <h2 className="text-[17px] font-bold text-[#000000]">Facility Information</h2>
+              <p className="text-[12px] text-[#8E8E93] mt-0.5">Basic details about your facility</p>
+            </div>
             {settingsLoading ? (
               <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-[#8E8E93]" /></div>
             ) : (
@@ -265,9 +266,12 @@ export default function Settings({ onAddToast, initialSection, username }: Props
         )}
 
         {section === 'Staff Management' && (
-          <div className="ios-card overflow-hidden">
-            <div className="px-6 py-4 flex items-center justify-between ios-separator">
-              <h2 className="text-[17px] font-semibold text-[#000000]">Staff Management</h2>
+          <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
+            <div className="px-6 py-4 flex items-center justify-between border-b border-[rgba(60,60,67,0.08)]">
+              <div>
+                <h2 className="text-[17px] font-bold text-[#000000]">Staff Management</h2>
+                <p className="text-[12px] text-[#8E8E93] mt-0.5">{staff.length} members</p>
+              </div>
               <button onClick={() => setShowAddStaff(true)} className="flex items-center gap-1.5 px-4 py-2 bg-[#007AFF] text-white rounded-xl text-[13px] font-medium active:opacity-80">
                 <Plus className="w-3.5 h-3.5" />
                 Add
@@ -306,19 +310,18 @@ export default function Settings({ onAddToast, initialSection, username }: Props
               <div className="overflow-x-auto">
                 <table className="w-full text-[13px]">
                   <thead>
-                    <tr className="bg-[#F2F2F7]/60">
+                    <tr className="bg-[#F9F9F9] border-b border-[rgba(60,60,67,0.08)]">
                       {['Name', 'Role', 'Email', 'Status', ''].map(h => (
-                        <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
+                        <th key={h} className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {staff.length === 0 ? (
                       <tr><td colSpan={5} className="text-center py-12 text-[#8E8E93] text-[14px]">No staff members found.</td></tr>
-                    ) : (
-                      staff.map((s) => (
-                        <tr key={s.id} className="ios-separator last:[border-bottom:none]">
-                          <td className="px-5 py-3.5 font-medium text-[#000000]">{s.name}</td>
+                    ) : staff.map((s) => (
+                      <tr key={s.id} className="border-b border-[rgba(60,60,67,0.06)] last:border-0">
+                        <td className="px-5 py-3.5 font-semibold text-[#000000]">{s.name}</td>
                           <td className="px-5 py-3.5 text-[#3A3A3C]">{s.role}</td>
                           <td className="px-5 py-3.5 text-[#8E8E93]">{s.email}</td>
                           <td className="px-5 py-3.5">
@@ -344,8 +347,11 @@ export default function Settings({ onAddToast, initialSection, username }: Props
         )}
 
         {section === 'Notification Rules' && (
-          <div className="ios-card p-6 space-y-5">
-            <h2 className="text-[17px] font-semibold text-[#000000]">Notification Rules</h2>
+          <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-6 space-y-5">
+            <div className="border-b border-[rgba(60,60,67,0.08)] pb-3">
+              <h2 className="text-[17px] font-bold text-[#000000]">Notification Rules</h2>
+              <p className="text-[12px] text-[#8E8E93] mt-0.5">Configure when alerts are sent</p>
+            </div>
             {settingsLoading ? (
               <div className="flex items-center justify-center py-12"><Loader2 className="w-5 h-5 animate-spin text-[#8E8E93]" /></div>
             ) : (

@@ -73,51 +73,45 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission, o
   return (
     <div className="p-4 sm:p-6 space-y-3 sm:space-y-4">
       {/* Header row */}
-      <div className="flex flex-col gap-3">
+      <div className="border-b border-[rgba(60,60,67,0.1)] pb-4 mb-1">
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h1 className="text-[20px] font-black text-[#000000] tracking-tight">All Patients</h1>
+            <p className="text-[12px] text-[#8E8E93] mt-0.5">{filtered.length} of {patients.length} shown</p>
+          </div>
+          <button
+            onClick={onNewAdmission}
+            className="flex items-center gap-1.5 bg-[#007AFF] text-white px-4 py-2.5 rounded-xl text-[13px] font-semibold active:opacity-80 shrink-0"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">New Admission</span>
+            <span className="sm:hidden">New</span>
+          </button>
+        </div>
         <div className="flex flex-wrap gap-2">
           <div className="relative flex-1 min-w-[140px]">
             <Search className="absolute left-3 top-[9px] w-[14px] h-[14px] text-[#8E8E93]" />
             <input
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search"
-              className="w-full pl-8 pr-3 py-2 bg-[#E5E5EA]/60 rounded-xl text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 placeholder-[#8E8E93]"
+              placeholder="Search patients…"
+              className="w-full pl-8 pr-3 py-2 bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] rounded-xl text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 placeholder-[#C7C7CC]"
             />
           </div>
-          <select
-            value={typeFilter}
-            onChange={e => setTypeFilter(e.target.value)}
-            className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]"
-          >
-            {['All', 'Independent', 'High Support', 'Minor', 'Discharged'].map(o => (
-              <option key={o} value={o}>{o}</option>
-            ))}
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)}
+            className="bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] rounded-xl px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]">
+            {['All', 'Independent', 'High Support', 'Minor', 'Discharged'].map(o => <option key={o}>{o}</option>)}
           </select>
-          <select
-            value={statusFilter}
-            onChange={e => setStatusFilter(e.target.value)}
-            className="bg-[#E5E5EA]/60 rounded-xl px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]"
-          >
-            {['All', 'Active', 'Discharged'].map(o => (
-              <option key={o} value={o}>{o}</option>
-            ))}
+          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+            className="bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] rounded-xl px-3 py-2 text-[13px] outline-none focus:ring-2 focus:ring-[#007AFF]/30 text-[#3A3A3C]">
+            {['All', 'Active', 'Discharged'].map(o => <option key={o}>{o}</option>)}
           </select>
-        </div>
-        <div className="flex gap-2 justify-end">
-          <button
-            onClick={onNewAdmission}
-            className="flex items-center gap-1.5 bg-[#007AFF] text-white px-3 sm:px-4 py-2 rounded-xl text-[13px] font-medium active:opacity-80 shrink-0"
-          >
-            <UserPlus className="w-4 h-4" />
-            <span className="hidden sm:inline">New Admission</span>
-            <span className="sm:hidden">New</span>
-          </button>
           {!bulkMode ? (
-            <button onClick={() => setBulkMode(true)} className="px-3 py-2 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6] shrink-0">Select</button>
+            <button onClick={() => setBulkMode(true)} className="px-3 py-2 bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#E5E5EA] shrink-0">Select</button>
           ) : (
             <div className="flex gap-2 shrink-0">
-              <button onClick={selectAll} className="px-3 py-2 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">All</button>
-              <button onClick={clearSelection} className="px-3 py-2 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">Done</button>
+              <button onClick={selectAll} className="px-3 py-2 bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#E5E5EA]">All</button>
+              <button onClick={clearSelection} className="px-3 py-2 bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#E5E5EA]">Done</button>
             </div>
           )}
         </div>
@@ -156,20 +150,20 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission, o
       )}
 
       {/* Table */}
-      <div className="ios-card overflow-hidden">
-        <div className="overflow-x-auto max-h-[calc(100vh-220px)] overflow-y-auto">
+      <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
+        <div className="overflow-x-auto max-h-[calc(100vh-260px)] overflow-y-auto">
           <table className="w-full text-[13px]">
             <thead className="sticky top-0 z-10">
-              <tr className="bg-[#F2F2F7]">
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">Patient</th>
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden md:table-cell">Age</th>
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">Type</th>
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden lg:table-cell">Admitted</th>
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden lg:table-cell">Sub-Status</th>
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden xl:table-cell">Days</th>
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium hidden xl:table-cell">Next Action</th>
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium">Status</th>
-                <th className="text-left px-5 py-3 text-[#8E8E93] font-medium"></th>
+              <tr className="bg-[#F9F9F9] border-b border-[rgba(60,60,67,0.08)]">
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">Patient</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide hidden md:table-cell">Age</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">Type</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide hidden lg:table-cell">Admitted</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide hidden lg:table-cell">Sub-Status</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide hidden xl:table-cell">Days</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide hidden xl:table-cell">Next Action</th>
+                <th className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">Status</th>
+                <th className="px-5 py-3" />
               </tr>
             </thead>
             <tbody>
@@ -191,7 +185,7 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission, o
                       'ios-separator last:[border-bottom:none] transition-all cursor-pointer hover:bg-[#F2F2F7]/50 active:bg-[#E5E5EA]/50 animate-fade-in-up',
                       selected.has(p.id) && 'bg-[#007AFF]/5'
                     )}
-                    style={{ animationDelay: `${i * 30}ms` }}
+                    style={{ animationDelay: `${i * 30}ms`, borderBottom: '1px solid rgba(60,60,67,0.06)' }}
                     onClick={() => bulkMode ? toggleSelect(p.id) : onViewPatient(p.id)}
                     onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
                     onTouchEnd={e => {
@@ -243,7 +237,7 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission, o
             </tbody>
           </table>
         </div>
-        <div className="px-5 py-3 ios-separator flex items-center justify-between bg-[#F2F2F7]/40">
+        <div className="px-5 py-3 border-t border-[rgba(60,60,67,0.08)] flex items-center justify-between bg-[#F9F9F9]">
           <span className="text-[13px] text-[#8E8E93]">Showing {filtered.length} of {patients.length}</span>
           <div className="flex items-center gap-1">
             <button className="p-1.5 rounded-lg text-[#8E8E93] hover:bg-[#E5E5EA] disabled:opacity-30" disabled>

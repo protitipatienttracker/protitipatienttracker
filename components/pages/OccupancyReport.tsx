@@ -123,34 +123,37 @@ export default function OccupancyReport({ patients }: Props) {
 
   return (
     <div className="p-5 sm:p-6 space-y-5">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-0.5 bg-[#E5E5EA] p-0.5 rounded-xl">
-          {['This Month', 'Last 3 Months', 'This Year'].map(r => (
-            <button key={r} onClick={() => setRange(r)}
-              className={cn('px-3.5 py-2 text-[12px] font-medium rounded-[10px] transition-colors',
-                range === r ? 'bg-white text-[#000000] shadow-sm' : 'text-[#8E8E93]'
-              )}>
-              {r}
-            </button>
-          ))}
+      <div className="flex items-center justify-between border-b border-[rgba(60,60,67,0.1)] pb-4">
+        <div>
+          <h1 className="text-[20px] font-black text-[#000000] tracking-tight">Reports & Analytics</h1>
+          <p className="text-[12px] text-[#8E8E93] mt-0.5">Facility performance overview</p>
         </div>
-        <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2.5 bg-[#E5E5EA] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#D1D1D6]">
-          <Download className="w-3.5 h-3.5" />
-          Export PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5 bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] p-0.5 rounded-xl">
+            {['This Month', 'Last 3 Months', 'This Year'].map(r => (
+              <button key={r} onClick={() => setRange(r)}
+                className={cn('px-3.5 py-2 text-[12px] font-medium rounded-[10px] transition-colors',
+                  range === r ? 'bg-white text-[#000000] shadow-sm' : 'text-[#8E8E93]'
+                )}>{r}</button>
+            ))}
+          </div>
+          <button onClick={handleExportPDF} className="flex items-center gap-2 px-4 py-2.5 bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] rounded-xl text-[13px] text-[#3A3A3C] font-medium active:bg-[#E5E5EA]">
+            <Download className="w-3.5 h-3.5" /> Export PDF
+          </button>
+        </div>
       </div>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {[
-          { label: 'Admissions', value: thisMonthAdmissions, sub: 'this month' },
-          { label: 'Discharges', value: discharged.length, sub: 'all time' },
-          { label: 'Avg Stay', value: `${avgStay}d`, sub: 'active patients' },
-          { label: 'Occupancy', value: `${active.length}/30`, sub: `${Math.round((active.length / 30) * 100)}%` },
+          { label: 'Admissions', value: thisMonthAdmissions, sub: 'this month', accent: '#007AFF' },
+          { label: 'Discharges', value: discharged.length, sub: 'all time', accent: '#34C759' },
+          { label: 'Avg Stay', value: `${avgStay}d`, sub: 'active patients', accent: '#FF9500' },
+          { label: 'Occupancy', value: `${active.length}/30`, sub: `${Math.round((active.length / 30) * 100)}% capacity`, accent: '#5856D6' },
         ].map(s => (
-          <div key={s.label} className="ios-card p-4 sm:p-5 text-center">
-            <p className="text-[12px] font-medium text-[#8E8E93] uppercase tracking-wide mb-2">{s.label}</p>
-            <p className="text-[24px] font-bold text-[#000000]">{s.value}</p>
+          <div key={s.label} className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-5">
+            <p className="text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-2">{s.label}</p>
+            <p className="text-[30px] font-black tracking-tight" style={{ color: s.accent }}>{s.value}</p>
             <p className="text-[12px] text-[#8E8E93] mt-1">{s.sub}</p>
           </div>
         ))}
@@ -158,8 +161,9 @@ export default function OccupancyReport({ patients }: Props) {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="ios-card p-5">
-          <h3 className="text-[14px] font-semibold text-[#000000] mb-4">Admissions vs Discharges</h3>
+        <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-5">
+          <h3 className="text-[15px] font-bold text-[#000000] mb-1">Admissions vs Discharges</h3>
+          <p className="text-[12px] text-[#8E8E93] mb-4">Last 14 days</p>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={barData.slice(-14)} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F2F2F7" />
@@ -173,8 +177,9 @@ export default function OccupancyReport({ patients }: Props) {
           </ResponsiveContainer>
         </div>
 
-        <div className="ios-card p-5">
-          <h3 className="text-[14px] font-semibold text-[#000000] mb-4">Active Patients Over Time</h3>
+        <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-5">
+          <h3 className="text-[15px] font-bold text-[#000000] mb-1">Active Patients Over Time</h3>
+          <p className="text-[12px] text-[#8E8E93] mb-4">Weekly snapshot</p>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={lineData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F2F2F7" />
@@ -186,8 +191,9 @@ export default function OccupancyReport({ patients }: Props) {
           </ResponsiveContainer>
         </div>
 
-        <div className="ios-card p-5">
-          <h3 className="text-[14px] font-semibold text-[#000000] mb-4">Type Breakdown</h3>
+        <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-5">
+          <h3 className="text-[15px] font-bold text-[#000000] mb-1">Type Breakdown</h3>
+          <p className="text-[12px] text-[#8E8E93] mb-4">Active patients only</p>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="60%" height={200}>
               <PieChart>
@@ -211,8 +217,9 @@ export default function OccupancyReport({ patients }: Props) {
           </div>
         </div>
 
-        <div className="ios-card p-5">
-          <h3 className="text-[14px] font-semibold text-[#000000] mb-4">Avg Stay by Type</h3>
+        <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-5">
+          <h3 className="text-[15px] font-bold text-[#000000] mb-1">Avg Stay by Type</h3>
+          <p className="text-[12px] text-[#8E8E93] mb-4">Days admitted</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={avgStayData} layout="vertical" margin={{ top: 0, right: 20, bottom: 0, left: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#F2F2F7" horizontal={false} />

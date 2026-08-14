@@ -215,7 +215,11 @@ export default function CalendarPage({ patients, onViewPatient }: Props) {
     <div className="p-4 sm:p-6 flex flex-col lg:flex-row gap-4 h-full min-h-0">
       <div className="flex-1 min-w-0 space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="flex items-center justify-between flex-wrap gap-2 border-b border-[rgba(60,60,67,0.1)] pb-4">
+          <div className="order-first">
+            <h1 className="text-[20px] font-black text-[#000000] tracking-tight">Calendar</h1>
+            <p className="text-[12px] text-[#8E8E93] mt-0.5">{monthEvents.length} events this month</p>
+          </div>
           {/* Patient Search Dropdown */}
           <div ref={dropdownRef} className="relative order-last sm:order-none w-full sm:w-48">
             <div

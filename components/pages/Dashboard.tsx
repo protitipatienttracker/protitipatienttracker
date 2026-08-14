@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Users, Clock, Brain, BedDouble, ChevronRight, ArrowUpRight } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { StatusBadge } from '@/components/ui/badge-status'
-import { formatDate, type Patient } from '@/lib/data'
+import { type Patient } from '@/lib/data'
 import { cn } from '@/lib/utils'
 
 const DONUT_COLORS = ['#007AFF', '#FF9500', '#AF52DE']
@@ -37,43 +37,36 @@ interface StatCardProps {
   value: string | number
   sub: string
   subColor?: string
-  trend?: string
   onClick?: () => void
 }
 
-function StatCard({ icon, accent, accentBg, label, value, sub, subColor = 'text-[#8E8E93]', trend, onClick }: StatCardProps) {
+function StatCard({ icon, accent, accentBg, label, value, sub, subColor = 'text-[#8E8E93]', onClick }: StatCardProps) {
   const animatedValue = useAnimatedNumber(typeof value === 'number' ? value : 0)
   const displayValue = typeof value === 'number' ? animatedValue : value
   return (
     <div
-      className={cn('ios-card p-5 flex flex-col gap-3 relative overflow-hidden', onClick && 'cursor-pointer active:scale-[0.97] transition-transform')}
+      className={cn(
+        'relative overflow-hidden rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-5 flex flex-col gap-3',
+        onClick && 'cursor-pointer active:scale-[0.97] transition-transform'
+      )}
       onClick={onClick}
     >
-      {/* top row */}
       <div className="flex items-center justify-between">
-        <span className={cn('w-9 h-9 rounded-2xl flex items-center justify-center', accentBg)}>{icon}</span>
+        <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center', accentBg)}>{icon}</span>
         {onClick && <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />}
       </div>
-      {/* number */}
       <div>
-        <p className="text-[32px] font-black tracking-tight leading-none" style={{ color: accent }}>{displayValue}</p>
-        <p className="text-[13px] font-semibold text-[#000000] mt-1">{label}</p>
+        <p className="text-[36px] font-black tracking-tight leading-none" style={{ color: accent }}>{displayValue}</p>
+        <p className="text-[13px] font-semibold text-[#000000] mt-1.5">{label}</p>
       </div>
-      {/* sub */}
       <p className={cn('text-[12px] font-medium', subColor)}>{sub}</p>
-      {/* decorative circle */}
-      <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full opacity-[0.06]" style={{ backgroundColor: accent }} />
+      <div className="absolute -right-3 -bottom-3 w-16 h-16 rounded-full opacity-[0.07]" style={{ backgroundColor: accent }} />
     </div>
   )
 }
 
 interface UpcomingAction {
-  id: string
-  name: string
-  type: string
-  action: string
-  dueDate: string
-  status: string
+  id: string; name: string; type: string; action: string; dueDate: string; status: string
 }
 
 function buildUpcomingActions(patients: Patient[]): UpcomingAction[] {
@@ -87,43 +80,27 @@ function buildUpcomingActions(patients: Patient[]): UpcomingAction[] {
       else dueLabel = `In ${daysUntil}d`
       return { id: p.id, name: p.name, type: p.admissionType, action: p.nextActionType, dueDate: dueLabel, status: p.status }
     })
-    .sort((a, b) => {
-      const order = ['Action Needed', 'Due Soon', 'Upcoming', 'On Track']
-      return order.indexOf(a.status) - order.indexOf(b.status)
-    })
+    .sort((a, b) => ['Action Needed', 'Due Soon', 'Upcoming', 'On Track'].indexOf(a.status) - ['Action Needed', 'Due Soon', 'Upcoming', 'On Track'].indexOf(b.status))
     .slice(0, 10)
 }
 
-interface Props {
-  patients: Patient[]
-  onNavigate: (page: string) => void
-}
+interface Props { patients: Patient[]; onNavigate: (page: string) => void }
 
 export default function Dashboard({ patients, onNavigate }: Props) {
   const active = patients.filter(p => p.admissionType !== 'Discharged')
   const renewalsDue = patients.filter(p => p.nextActionType === 'Shift to CHS' && p.admissionType !== 'Discharged')
   const assessmentsToday = patients.filter(p => p.nextActionType === 'Capacity Assessment' && (p.status === 'Action Needed' || p.status === 'Due Soon'))
   const beds = 30 - active.length
-
   const upcomingActions = buildUpcomingActions(patients)
-
   const donutData = [
     { name: 'Independent', value: active.filter(p => p.admissionType === 'Independent').length },
     { name: 'High Support', value: active.filter(p => p.admissionType === 'High Support').length },
     { name: 'Minor', value: active.filter(p => p.admissionType === 'Minor').length },
   ]
-
   const recentAdmissions = active.filter(p => {
-    const d = new Date(p.admissionDate)
-    const weekAgo = new Date()
-    weekAgo.setDate(weekAgo.getDate() - 7)
-    return d >= weekAgo
+    const d = new Date(p.admissionDate); const w = new Date(); w.setDate(w.getDate() - 7); return d >= w
   }).length
-
-  const overdueRenewals = renewalsDue.filter(p => {
-    if (p.nextActionDue === '—') return false
-    return new Date(p.nextActionDue) < new Date()
-  }).length
+  const overdueRenewals = renewalsDue.filter(p => p.nextActionDue !== '—' && new Date(p.nextActionDue) < new Date()).length
 
   const today = new Date()
   const greeting = today.getHours() < 12 ? 'Good morning' : today.getHours() < 17 ? 'Good afternoon' : 'Good evening'
@@ -133,16 +110,16 @@ export default function Dashboard({ patients, onNavigate }: Props) {
     <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
 
       {/* Page header */}
-      <div className="flex items-end justify-between">
+      <div className="flex items-end justify-between border-b border-[rgba(60,60,67,0.1)] pb-5">
         <div>
-          <p className="text-[13px] text-[#8E8E93] font-medium">{dateLabel}</p>
-          <h1 className="text-[22px] font-black text-[#000000] tracking-tight mt-0.5">{greeting} 👋</h1>
+          <p className="text-[12px] font-medium text-[#8E8E93] uppercase tracking-wide">{dateLabel}</p>
+          <h1 className="text-[24px] font-black text-[#000000] tracking-tight mt-1">{greeting}</h1>
           <p className="text-[13px] text-[#8E8E93] mt-0.5">
-            <span className="font-semibold text-[#000000]">{active.length}</span> patients currently admitted
+            <span className="font-bold text-[#000000]">{active.length}</span> patients currently admitted
           </p>
         </div>
         {overdueRenewals > 0 && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF3B30]/10 rounded-xl">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF3B30]/10 border border-[#FF3B30]/20 rounded-xl">
             <span className="w-2 h-2 rounded-full bg-[#FF3B30] animate-pulse" />
             <span className="text-[12px] font-semibold text-[#FF3B30]">{overdueRenewals} overdue</span>
           </div>
@@ -154,8 +131,7 @@ export default function Dashboard({ patients, onNavigate }: Props) {
         <StatCard
           icon={<Users className="w-4 h-4 text-[#34C759]" />}
           accent="#34C759" accentBg="bg-[#34C759]/10"
-          label="Active Patients"
-          value={active.length}
+          label="Active Patients" value={active.length}
           sub={recentAdmissions > 0 ? `+${recentAdmissions} this week` : 'No new this week'}
           subColor={recentAdmissions > 0 ? 'text-[#34C759]' : 'text-[#8E8E93]'}
           onClick={() => onNavigate('all-patients')}
@@ -163,8 +139,7 @@ export default function Dashboard({ patients, onNavigate }: Props) {
         <StatCard
           icon={<Clock className="w-4 h-4 text-[#FF9500]" />}
           accent="#FF9500" accentBg="bg-[#FF9500]/10"
-          label="Renewals Due"
-          value={renewalsDue.length}
+          label="Renewals Due" value={renewalsDue.length}
           sub={overdueRenewals > 0 ? `${overdueRenewals} overdue` : 'All on track'}
           subColor={overdueRenewals > 0 ? 'text-[#FF3B30]' : 'text-[#34C759]'}
           onClick={() => onNavigate('renewals-due')}
@@ -172,8 +147,7 @@ export default function Dashboard({ patients, onNavigate }: Props) {
         <StatCard
           icon={<Brain className="w-4 h-4 text-[#5856D6]" />}
           accent="#5856D6" accentBg="bg-[#5856D6]/10"
-          label="Assessments Due"
-          value={assessmentsToday.length}
+          label="Assessments Due" value={assessmentsToday.length}
           sub={assessmentsToday[0] ? `Next: ${assessmentsToday[0].name}` : 'None pending'}
           subColor={assessmentsToday.length > 0 ? 'text-[#5856D6]' : 'text-[#8E8E93]'}
           onClick={() => onNavigate('capacity-assessments')}
@@ -181,8 +155,7 @@ export default function Dashboard({ patients, onNavigate }: Props) {
         <StatCard
           icon={<BedDouble className="w-4 h-4 text-[#007AFF]" />}
           accent="#007AFF" accentBg="bg-[#007AFF]/10"
-          label="Beds Available"
-          value={beds}
+          label="Beds Available" value={beds}
           sub={`${active.length} of 30 occupied`}
           onClick={() => onNavigate('occupancy-report')}
         />
@@ -192,18 +165,18 @@ export default function Dashboard({ patients, onNavigate }: Props) {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
 
         {/* Upcoming Actions */}
-        <div className="xl:col-span-3 ios-card overflow-hidden">
-          <div className="px-5 py-4 flex items-center justify-between ios-separator">
+        <div className="xl:col-span-3 rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
+          <div className="px-5 py-4 flex items-center justify-between border-b border-[rgba(60,60,67,0.08)]">
             <div>
               <h2 className="text-[17px] font-bold text-[#000000]">Upcoming Actions</h2>
               <p className="text-[12px] text-[#8E8E93] mt-0.5">Sorted by urgency</p>
             </div>
-            <span className="px-2.5 py-1 bg-[#F2F2F7] rounded-full text-[12px] font-semibold text-[#3A3A3C]">{upcomingActions.length}</span>
+            <span className="px-2.5 py-1 bg-[#F2F2F7] border border-[rgba(60,60,67,0.08)] rounded-full text-[12px] font-bold text-[#3A3A3C]">{upcomingActions.length}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="bg-[#F2F2F7]/80">
+                <tr className="bg-[#F9F9F9] border-b border-[rgba(60,60,67,0.06)]">
                   <th className="text-left px-5 py-2.5 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">Patient</th>
                   <th className="text-left px-5 py-2.5 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide hidden sm:table-cell">Action</th>
                   <th className="text-left px-5 py-2.5 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">Due</th>
@@ -215,60 +188,54 @@ export default function Dashboard({ patients, onNavigate }: Props) {
                 {upcomingActions.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="text-center py-14">
-                      <p className="text-[15px] font-semibold text-[#3A3A3C]">All clear</p>
+                      <p className="text-[15px] font-bold text-[#3A3A3C]">All clear</p>
                       <p className="text-[13px] text-[#8E8E93] mt-1">No upcoming actions</p>
                     </td>
                   </tr>
-                ) : (
-                  upcomingActions.map((row) => (
-                    <tr key={row.id} className={cn(
-                      'ios-separator last:[border-bottom:none] transition-colors',
-                      row.status === 'Action Needed' && 'bg-[#FF3B30]/5',
-                      row.status === 'Due Soon' && 'bg-[#FF9500]/5',
-                    )}>
-                      <td className="px-5 py-3.5">
-                        <p className="font-semibold text-[#000000] text-[13px]">{row.name}</p>
-                        <p className="text-[11px] text-[#8E8E93] mt-0.5">{row.type}</p>
-                      </td>
-                      <td className="px-5 py-3.5 text-[#3A3A3C] hidden sm:table-cell">{row.action}</td>
-                      <td className="px-5 py-3.5">
-                        <span className={cn(
-                          'text-[12px] font-semibold',
-                          row.dueDate.includes('overdue') ? 'text-[#FF3B30]' :
-                          row.dueDate === 'Today' ? 'text-[#FF9500]' : 'text-[#3A3A3C]'
-                        )}>{row.dueDate}</span>
-                      </td>
-                      <td className="px-5 py-3.5"><StatusBadge status={row.status} /></td>
-                      <td className="px-5 py-3.5">
-                        <button onClick={() => onNavigate('all-patients')}
-                          className="flex items-center gap-0.5 text-[#007AFF] font-semibold text-[12px] active:opacity-60">
-                          View <ArrowUpRight className="w-3 h-3" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ) : upcomingActions.map((row) => (
+                  <tr key={row.id} className={cn(
+                    'border-b border-[rgba(60,60,67,0.06)] last:border-0 transition-colors',
+                    row.status === 'Action Needed' && 'bg-[#FF3B30]/[0.03]',
+                    row.status === 'Due Soon' && 'bg-[#FF9500]/[0.03]',
+                  )}>
+                    <td className="px-5 py-3.5">
+                      <p className="font-semibold text-[#000000]">{row.name}</p>
+                      <p className="text-[11px] text-[#8E8E93] mt-0.5">{row.type}</p>
+                    </td>
+                    <td className="px-5 py-3.5 text-[#3A3A3C] hidden sm:table-cell">{row.action}</td>
+                    <td className="px-5 py-3.5">
+                      <span className={cn('text-[12px] font-bold',
+                        row.dueDate.includes('overdue') ? 'text-[#FF3B30]' :
+                        row.dueDate === 'Today' ? 'text-[#FF9500]' : 'text-[#3A3A3C]'
+                      )}>{row.dueDate}</span>
+                    </td>
+                    <td className="px-5 py-3.5"><StatusBadge status={row.status} /></td>
+                    <td className="px-5 py-3.5">
+                      <button onClick={() => onNavigate('all-patients')}
+                        className="flex items-center gap-0.5 text-[#007AFF] font-semibold text-[12px] active:opacity-60">
+                        View <ArrowUpRight className="w-3 h-3" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </div>
 
         {/* Donut Chart */}
-        <div className="xl:col-span-2 ios-card p-5 flex flex-col">
-          <div className="mb-1">
+        <div className="xl:col-span-2 rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-5 flex flex-col">
+          <div className="border-b border-[rgba(60,60,67,0.08)] pb-3 mb-3">
             <h2 className="text-[17px] font-bold text-[#000000]">Admission Breakdown</h2>
             <p className="text-[12px] text-[#8E8E93] mt-0.5">Active patients by type</p>
           </div>
-          <div className="flex-1 min-h-[180px] mt-2">
+          <div className="flex-1 min-h-[180px]">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie data={donutData} cx="50%" cy="50%" innerRadius="55%" outerRadius="80%" paddingAngle={3} dataKey="value">
                   {donutData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
                 </Pie>
-                <Tooltip
-                  contentStyle={{ fontSize: 12, borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                  formatter={(v) => [`${v} patients`, '']}
-                />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 12, border: '1px solid rgba(60,60,67,0.12)', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }} formatter={(v) => [`${v} patients`, '']} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -280,8 +247,8 @@ export default function Dashboard({ patients, onNavigate }: Props) {
                   <span className="text-[13px] text-[#3A3A3C]">{d.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-bold text-[#000000]">{d.value}</span>
-                  <span className="text-[11px] text-[#8E8E93]">
+                  <span className="text-[14px] font-black text-[#000000]">{d.value}</span>
+                  <span className="text-[11px] text-[#8E8E93] w-8 text-right">
                     {active.length > 0 ? `${Math.round((d.value / active.length) * 100)}%` : '0%'}
                   </span>
                 </div>
@@ -289,8 +256,8 @@ export default function Dashboard({ patients, onNavigate }: Props) {
             ))}
           </div>
           <div className="mt-3 pt-3 border-t border-[rgba(60,60,67,0.08)] flex items-center justify-between">
-            <span className="text-[12px] text-[#8E8E93]">Total active</span>
-            <span className="text-[15px] font-black text-[#000000]">{active.length}</span>
+            <span className="text-[12px] text-[#8E8E93] font-medium">Total active</span>
+            <span className="text-[18px] font-black text-[#000000]">{active.length}</span>
           </div>
         </div>
       </div>

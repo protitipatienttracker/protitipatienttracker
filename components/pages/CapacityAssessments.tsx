@@ -85,61 +85,59 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
 
   return (
     <div className="p-4 sm:p-6 space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex gap-0.5 bg-[#E5E5EA] p-0.5 rounded-xl">
-          {['Due / Upcoming', 'Completed'].map((t, i) => (
-            <button key={i} onClick={() => setTab(i)}
-              className={cn('px-4 py-2 text-[13px] font-medium rounded-[10px] transition-colors',
-                tab === i ? 'bg-white text-[#000000] shadow-sm' : 'text-[#8E8E93]'
-              )}
-            >
-              {t}
-            </button>
-          ))}
+      <div className="flex items-center justify-between border-b border-[rgba(60,60,67,0.1)] pb-4">
+        <div>
+          <h1 className="text-[20px] font-black text-[#000000] tracking-tight">Assessments</h1>
+          <p className="text-[12px] text-[#8E8E93] mt-0.5">{duePatients.length} due or upcoming</p>
         </div>
-        <button
-          onClick={() => setScheduleModal(true)}
-          className="flex items-center gap-1.5 bg-[#007AFF] text-white px-4 py-2.5 rounded-xl text-[13px] font-medium active:opacity-80"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          New Assessment
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex gap-0.5 bg-[#F2F2F7] border border-[rgba(60,60,67,0.1)] p-0.5 rounded-xl">
+            {['Due / Upcoming', 'Completed'].map((t, i) => (
+              <button key={i} onClick={() => setTab(i)}
+                className={cn('px-4 py-2 text-[13px] font-medium rounded-[10px] transition-colors',
+                  tab === i ? 'bg-white text-[#000000] shadow-sm' : 'text-[#8E8E93]'
+                )}>{t}</button>
+            ))}
+          </div>
+          <button onClick={() => setScheduleModal(true)}
+            className="flex items-center gap-1.5 bg-[#007AFF] text-white px-4 py-2.5 rounded-xl text-[13px] font-semibold active:opacity-80">
+            <Plus className="w-3.5 h-3.5" /> New Assessment
+          </button>
+        </div>
       </div>
 
       {tab === 0 && (
-        <div className="ios-card overflow-hidden">
+        <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="bg-[#F2F2F7]/60">
+                <tr className="bg-[#F9F9F9] border-b border-[rgba(60,60,67,0.08)]">
                   {['Patient', 'Type', 'Last Assessment', 'Result', 'Next Due', 'Status'].map(h => (
-                    <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
+                    <th key={h} className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {duePatients.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center py-16 text-[#8E8E93]">No assessments due</td>
-                  </tr>
-                ) : (
-                  duePatients.map((p) => {
+                  <tr><td colSpan={7} className="text-center py-16">
+                    <p className="text-[15px] font-bold text-[#3A3A3C]">All clear</p>
+                    <p className="text-[13px] text-[#8E8E93] mt-1">No assessments due</p>
+                  </td></tr>
+                ) : duePatients.map((p) => {
                     const last = p.assessments.slice(-1)[0]
                     const label = last?.nextDue ? daysDiffLabel(last.nextDue) : null
                     return (
-                      <tr key={p.id} onClick={() => onViewPatient(p.id)} className="ios-separator last:[border-bottom:none] cursor-pointer hover:bg-[#F2F2F7]/60 transition-colors">
-                        <td className="px-5 py-3">
-                          <p className="font-medium text-[#000000]">{p.name}</p>
-                        </td>
-                        <td className="px-5 py-3"><AdmissionTypeBadge type={p.admissionType} /></td>
-                        <td className="px-5 py-3 text-[#3A3A3C]">{last ? formatDate(last.date) : '—'}</td>
-                        <td className="px-5 py-3">{last ? <StatusBadge status={last.result} /> : '—'}</td>
-                        <td className="px-5 py-3 text-[#3A3A3C]">{last?.nextDue ? formatDate(last.nextDue) : '—'}</td>
-                        <td className={cn('px-5 py-3', label?.cls ?? '')}>{label?.text ?? '—'}</td>
+                      <tr key={p.id} onClick={() => onViewPatient(p.id)} className="border-b border-[rgba(60,60,67,0.06)] last:border-0 cursor-pointer hover:bg-[#F9F9F9] transition-colors">
+                        <td className="px-5 py-3.5"><p className="font-semibold text-[#000000]">{p.name}</p></td>
+                        <td className="px-5 py-3.5"><AdmissionTypeBadge type={p.admissionType} /></td>
+                        <td className="px-5 py-3.5 text-[#3A3A3C]">{last ? formatDate(last.date) : '—'}</td>
+                        <td className="px-5 py-3.5">{last ? <StatusBadge status={last.result} /> : '—'}</td>
+                        <td className="px-5 py-3.5 text-[#3A3A3C]">{last?.nextDue ? formatDate(last.nextDue) : '—'}</td>
+                        <td className={cn('px-5 py-3.5', label?.cls ?? '')}>{label?.text ?? '—'}</td>
                       </tr>
                     )
                   })
-                )}
+                }
               </tbody>
             </table>
           </div>
@@ -147,27 +145,25 @@ export default function CapacityAssessments({ patients, onViewPatient, onAddToas
       )}
 
       {tab === 1 && (
-        <div className="ios-card overflow-hidden">
+        <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="bg-[#F2F2F7]/60">
+                <tr className="bg-[#F9F9F9] border-b border-[rgba(60,60,67,0.08)]">
                   {['Date', 'Patient', 'Type', 'By', 'Result', 'Notes'].map(h => (
-                    <th key={h} className="text-left px-5 py-3 text-[#8E8E93] font-medium">{h}</th>
+                    <th key={h} className="text-left px-5 py-3 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {allAssessments.map((a) => (
-                  <tr key={a.id} onClick={() => onViewPatient(a.patientId)} className="ios-separator last:[border-bottom:none] cursor-pointer hover:bg-[#F2F2F7]/60 transition-colors">
-                    <td className="px-5 py-3 text-[#3A3A3C]">{formatDate(a.date)}</td>
-                    <td className="px-5 py-3">
-                      <p className="font-medium text-[#000000]">{a.patientName}</p>
-                    </td>
-                    <td className="px-5 py-3"><AdmissionTypeBadge type={a.admissionType} /></td>
-                    <td className="px-5 py-3 text-[#3A3A3C]">{a.conductedBy}</td>
-                    <td className="px-5 py-3"><StatusBadge status={a.result} /></td>
-                    <td className="px-5 py-3 text-[#8E8E93] max-w-xs truncate">{a.notes || '—'}</td>
+                  <tr key={a.id} onClick={() => onViewPatient(a.patientId)} className="border-b border-[rgba(60,60,67,0.06)] last:border-0 cursor-pointer hover:bg-[#F9F9F9] transition-colors">
+                    <td className="px-5 py-3.5 text-[#3A3A3C]">{formatDate(a.date)}</td>
+                    <td className="px-5 py-3.5"><p className="font-semibold text-[#000000]">{a.patientName}</p></td>
+                    <td className="px-5 py-3.5"><AdmissionTypeBadge type={a.admissionType} /></td>
+                    <td className="px-5 py-3.5 text-[#3A3A3C]">{a.conductedBy}</td>
+                    <td className="px-5 py-3.5"><StatusBadge status={a.result} /></td>
+                    <td className="px-5 py-3.5 text-[#8E8E93] max-w-xs truncate">{a.notes || '—'}</td>
                   </tr>
                 ))}
               </tbody>

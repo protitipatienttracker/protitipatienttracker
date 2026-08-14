@@ -154,9 +154,13 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl">
-      <div className="ios-card overflow-hidden">
+      <div className="mb-4">
+        <h1 className="text-[20px] font-black text-[#000000] tracking-tight">New Admission</h1>
+        <p className="text-[12px] text-[#8E8E93] mt-0.5">Complete all steps to admit a patient</p>
+      </div>
+      <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
         {/* Step Indicator */}
-        <div className="px-6 py-5 bg-[#F2F2F7]/60 ios-separator overflow-x-auto">
+        <div className="px-6 py-5 bg-[#F9F9F9] border-b border-[rgba(60,60,67,0.08)] overflow-x-auto">
           <StepIndicator current={step} total={STEPS.length} />
         </div>
 
@@ -348,7 +352,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
         </div>
 
         {/* Navigation */}
-        <div className="px-6 py-4 ios-separator bg-[#F2F2F7]/40 flex justify-between">
+        <div className="px-6 py-4 border-t border-[rgba(60,60,67,0.08)] bg-[#F9F9F9] flex justify-between">
           <button
             onClick={prevStep}
             disabled={step === 0}
