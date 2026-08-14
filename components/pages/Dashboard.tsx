@@ -185,14 +185,6 @@ export default function Dashboard({ patients, onNavigate }: Props) {
         />
       </div>
 
-      {/* Occupancy Gauge */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="ios-card p-5 flex flex-col items-center col-span-1">
-          <OccupancyGauge occupied={active.length} total={30} />
-          <p className="text-[13px] text-[#8E8E93] mt-2">{active.length}/30 beds used</p>
-        </div>
-      </div>
-
       {/* Middle Row */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         {/* Upcoming Actions */}
