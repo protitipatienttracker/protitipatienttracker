@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { Users, Clock, Brain, BedDouble } from 'lucide-react'
+import { Users, Clock, Brain, BedDouble, ChevronRight, ArrowUpRight } from 'lucide-react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { StatusBadge } from '@/components/ui/badge-status'
 import { formatDate, type Patient } from '@/lib/data'
@@ -8,8 +8,7 @@ import { cn } from '@/lib/utils'
 
 const DONUT_COLORS = ['#007AFF', '#FF9500', '#AF52DE']
 
-// Animated counter hook
-function useAnimatedNumber(target: number, duration = 600) {
+function useAnimatedNumber(target: number, duration = 700) {
   const [value, setValue] = useState(target)
   const prevRef = useRef(target)
   useEffect(() => {
@@ -30,52 +29,40 @@ function useAnimatedNumber(target: number, duration = 600) {
   return value
 }
 
-// Circular gauge SVG
-function OccupancyGauge({ occupied, total }: { occupied: number; total: number }) {
-  const pct = Math.round((occupied / total) * 100)
-  const r = 36
-  const circ = 2 * Math.PI * r
-  const offset = circ * (1 - occupied / total)
-  return (
-    <div className="relative w-24 h-24 mx-auto">
-      <svg width="96" height="96" viewBox="0 0 96 96">
-        <circle cx="48" cy="48" r={r} fill="none" stroke="#E5E5EA" strokeWidth="8" />
-        <circle cx="48" cy="48" r={r} fill="none" stroke="#007AFF" strokeWidth="8"
-          strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
-          transform="rotate(-90 48 48)" className="transition-all duration-700" />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-[18px] font-bold text-[#000000]">{pct}%</span>
-        <span className="text-[10px] text-[#8E8E93]">occupied</span>
-      </div>
-    </div>
-  )
-}
-
 interface StatCardProps {
   icon: React.ReactNode
-  iconBg: string
+  accent: string
+  accentBg: string
   label: string
   value: string | number
   sub: string
   subColor?: string
+  trend?: string
   onClick?: () => void
 }
 
-function StatCard({ icon, iconBg, label, value, sub, subColor = 'text-[#8E8E93]', onClick }: StatCardProps) {
+function StatCard({ icon, accent, accentBg, label, value, sub, subColor = 'text-[#8E8E93]', trend, onClick }: StatCardProps) {
   const animatedValue = useAnimatedNumber(typeof value === 'number' ? value : 0)
   const displayValue = typeof value === 'number' ? animatedValue : value
   return (
     <div
-      className={cn('ios-card p-4 sm:p-5', onClick && 'cursor-pointer active:scale-[0.97] transition-transform')}
+      className={cn('ios-card p-5 flex flex-col gap-3 relative overflow-hidden', onClick && 'cursor-pointer active:scale-[0.97] transition-transform')}
       onClick={onClick}
     >
-      <div className="flex items-center justify-between mb-2 sm:mb-3">
-        <p className="text-[12px] sm:text-[13px] font-medium text-[#8E8E93]">{label}</p>
-        <span className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center ${iconBg}`}>{icon}</span>
+      {/* top row */}
+      <div className="flex items-center justify-between">
+        <span className={cn('w-9 h-9 rounded-2xl flex items-center justify-center', accentBg)}>{icon}</span>
+        {onClick && <ChevronRight className="w-4 h-4 text-[#C7C7CC]" />}
       </div>
-      <p className="text-[22px] sm:text-[28px] font-bold text-[#000000] tracking-tight">{displayValue}</p>
-      <p className={`text-[12px] sm:text-[13px] mt-1 ${subColor}`}>{sub}</p>
+      {/* number */}
+      <div>
+        <p className="text-[32px] font-black tracking-tight leading-none" style={{ color: accent }}>{displayValue}</p>
+        <p className="text-[13px] font-semibold text-[#000000] mt-1">{label}</p>
+      </div>
+      {/* sub */}
+      <p className={cn('text-[12px] font-medium', subColor)}>{sub}</p>
+      {/* decorative circle */}
+      <div className="absolute -right-4 -bottom-4 w-20 h-20 rounded-full opacity-[0.06]" style={{ backgroundColor: accent }} />
     </div>
   )
 }
@@ -97,15 +84,8 @@ function buildUpcomingActions(patients: Patient[]): UpcomingAction[] {
       let dueLabel = ''
       if (daysUntil < 0) dueLabel = `${Math.abs(daysUntil)}d overdue`
       else if (daysUntil === 0) dueLabel = 'Today'
-      else dueLabel = `In ${daysUntil} days`
-      return {
-        id: p.id,
-        name: p.name,
-        type: p.admissionType,
-        action: p.nextActionType,
-        dueDate: dueLabel,
-        status: p.status,
-      }
+      else dueLabel = `In ${daysUntil}d`
+      return { id: p.id, name: p.name, type: p.admissionType, action: p.nextActionType, dueDate: dueLabel, status: p.status }
     })
     .sort((a, b) => {
       const order = ['Action Needed', 'Due Soon', 'Upcoming', 'On Track']
@@ -145,22 +125,44 @@ export default function Dashboard({ patients, onNavigate }: Props) {
     return new Date(p.nextActionDue) < new Date()
   }).length
 
+  const today = new Date()
+  const greeting = today.getHours() < 12 ? 'Good morning' : today.getHours() < 17 ? 'Good afternoon' : 'Good evening'
+  const dateLabel = today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+    <div className="p-4 sm:p-6 space-y-5 sm:space-y-6">
+
+      {/* Page header */}
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-[13px] text-[#8E8E93] font-medium">{dateLabel}</p>
+          <h1 className="text-[22px] font-black text-[#000000] tracking-tight mt-0.5">{greeting} 👋</h1>
+          <p className="text-[13px] text-[#8E8E93] mt-0.5">
+            <span className="font-semibold text-[#000000]">{active.length}</span> patients currently admitted
+          </p>
+        </div>
+        {overdueRenewals > 0 && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF3B30]/10 rounded-xl">
+            <span className="w-2 h-2 rounded-full bg-[#FF3B30] animate-pulse" />
+            <span className="text-[12px] font-semibold text-[#FF3B30]">{overdueRenewals} overdue</span>
+          </div>
+        )}
+      </div>
+
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <StatCard
           icon={<Users className="w-4 h-4 text-[#34C759]" />}
-          iconBg="bg-[#34C759]/10"
+          accent="#34C759" accentBg="bg-[#34C759]/10"
           label="Active Patients"
           value={active.length}
-          sub={`${recentAdmissions} this week`}
-          subColor="text-[#34C759]"
+          sub={recentAdmissions > 0 ? `+${recentAdmissions} this week` : 'No new this week'}
+          subColor={recentAdmissions > 0 ? 'text-[#34C759]' : 'text-[#8E8E93]'}
           onClick={() => onNavigate('all-patients')}
         />
         <StatCard
           icon={<Clock className="w-4 h-4 text-[#FF9500]" />}
-          iconBg="bg-[#FF9500]/10"
+          accent="#FF9500" accentBg="bg-[#FF9500]/10"
           label="Renewals Due"
           value={renewalsDue.length}
           sub={overdueRenewals > 0 ? `${overdueRenewals} overdue` : 'All on track'}
@@ -169,46 +171,52 @@ export default function Dashboard({ patients, onNavigate }: Props) {
         />
         <StatCard
           icon={<Brain className="w-4 h-4 text-[#5856D6]" />}
-          iconBg="bg-[#5856D6]/10"
+          accent="#5856D6" accentBg="bg-[#5856D6]/10"
           label="Assessments Due"
           value={assessmentsToday.length}
           sub={assessmentsToday[0] ? `Next: ${assessmentsToday[0].name}` : 'None pending'}
+          subColor={assessmentsToday.length > 0 ? 'text-[#5856D6]' : 'text-[#8E8E93]'}
           onClick={() => onNavigate('capacity-assessments')}
         />
         <StatCard
           icon={<BedDouble className="w-4 h-4 text-[#007AFF]" />}
-          iconBg="bg-[#007AFF]/10"
+          accent="#007AFF" accentBg="bg-[#007AFF]/10"
           label="Beds Available"
           value={beds}
-          sub={`Out of 30 total`}
+          sub={`${active.length} of 30 occupied`}
           onClick={() => onNavigate('occupancy-report')}
         />
       </div>
 
       {/* Middle Row */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+
         {/* Upcoming Actions */}
         <div className="xl:col-span-3 ios-card overflow-hidden">
           <div className="px-5 py-4 flex items-center justify-between ios-separator">
-            <h2 className="text-[15px] font-semibold text-[#000000]">Upcoming Actions</h2>
-            <span className="text-[13px] text-[#8E8E93]">{upcomingActions.length} items</span>
+            <div>
+              <h2 className="text-[17px] font-bold text-[#000000]">Upcoming Actions</h2>
+              <p className="text-[12px] text-[#8E8E93] mt-0.5">Sorted by urgency</p>
+            </div>
+            <span className="px-2.5 py-1 bg-[#F2F2F7] rounded-full text-[12px] font-semibold text-[#3A3A3C]">{upcomingActions.length}</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-[13px]">
               <thead>
-                <tr className="bg-[#F2F2F7]/60">
-                  <th className="text-left px-5 py-2.5 text-[#8E8E93] font-medium">Patient</th>
-                  <th className="text-left px-5 py-2.5 text-[#8E8E93] font-medium hidden sm:table-cell">Action</th>
-                  <th className="text-left px-5 py-2.5 text-[#8E8E93] font-medium">Due</th>
-                  <th className="text-left px-5 py-2.5 text-[#8E8E93] font-medium">Status</th>
-                  <th className="text-left px-5 py-2.5 text-[#8E8E93] font-medium"></th>
+                <tr className="bg-[#F2F2F7]/80">
+                  <th className="text-left px-5 py-2.5 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">Patient</th>
+                  <th className="text-left px-5 py-2.5 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide hidden sm:table-cell">Action</th>
+                  <th className="text-left px-5 py-2.5 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">Due</th>
+                  <th className="text-left px-5 py-2.5 text-[11px] font-semibold text-[#8E8E93] uppercase tracking-wide">Status</th>
+                  <th className="px-5 py-2.5" />
                 </tr>
               </thead>
               <tbody>
                 {upcomingActions.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center py-12 text-[#8E8E93]">
-                      No upcoming actions
+                    <td colSpan={5} className="text-center py-14">
+                      <p className="text-[15px] font-semibold text-[#3A3A3C]">All clear</p>
+                      <p className="text-[13px] text-[#8E8E93] mt-1">No upcoming actions</p>
                     </td>
                   </tr>
                 ) : (
@@ -218,19 +226,23 @@ export default function Dashboard({ patients, onNavigate }: Props) {
                       row.status === 'Action Needed' && 'bg-[#FF3B30]/5',
                       row.status === 'Due Soon' && 'bg-[#FF9500]/5',
                     )}>
-                      <td className="px-5 py-3">
-                        <p className="font-medium text-[#000000]">{row.name}</p>
-                        <p className="text-[11px] text-[#8E8E93]">{row.type}</p>
+                      <td className="px-5 py-3.5">
+                        <p className="font-semibold text-[#000000] text-[13px]">{row.name}</p>
+                        <p className="text-[11px] text-[#8E8E93] mt-0.5">{row.type}</p>
                       </td>
-                      <td className="px-5 py-3 text-[#3A3A3C] hidden sm:table-cell">{row.action}</td>
-                      <td className="px-5 py-3 text-[#3A3A3C]">{row.dueDate}</td>
-                      <td className="px-5 py-3"><StatusBadge status={row.status} /></td>
-                      <td className="px-5 py-3">
-                        <button
-                          onClick={() => onNavigate('all-patients')}
-                          className="text-[#007AFF] font-medium text-[13px] active:opacity-60"
-                        >
-                          View
+                      <td className="px-5 py-3.5 text-[#3A3A3C] hidden sm:table-cell">{row.action}</td>
+                      <td className="px-5 py-3.5">
+                        <span className={cn(
+                          'text-[12px] font-semibold',
+                          row.dueDate.includes('overdue') ? 'text-[#FF3B30]' :
+                          row.dueDate === 'Today' ? 'text-[#FF9500]' : 'text-[#3A3A3C]'
+                        )}>{row.dueDate}</span>
+                      </td>
+                      <td className="px-5 py-3.5"><StatusBadge status={row.status} /></td>
+                      <td className="px-5 py-3.5">
+                        <button onClick={() => onNavigate('all-patients')}
+                          className="flex items-center gap-0.5 text-[#007AFF] font-semibold text-[12px] active:opacity-60">
+                          View <ArrowUpRight className="w-3 h-3" />
                         </button>
                       </td>
                     </tr>
@@ -243,23 +255,15 @@ export default function Dashboard({ patients, onNavigate }: Props) {
 
         {/* Donut Chart */}
         <div className="xl:col-span-2 ios-card p-5 flex flex-col">
-          <h2 className="text-[15px] font-semibold text-[#000000] mb-1">Admission Breakdown</h2>
-          <p className="text-[13px] text-[#8E8E93] mb-3">Active patients only</p>
-          <div className="flex-1 min-h-[180px]">
+          <div className="mb-1">
+            <h2 className="text-[17px] font-bold text-[#000000]">Admission Breakdown</h2>
+            <p className="text-[12px] text-[#8E8E93] mt-0.5">Active patients by type</p>
+          </div>
+          <div className="flex-1 min-h-[180px] mt-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
-                <Pie
-                  data={donutData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius="55%"
-                  outerRadius="80%"
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {donutData.map((_, i) => (
-                    <Cell key={i} fill={DONUT_COLORS[i]} />
-                  ))}
+                <Pie data={donutData} cx="50%" cy="50%" innerRadius="55%" outerRadius="80%" paddingAngle={3} dataKey="value">
+                  {donutData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
                 </Pie>
                 <Tooltip
                   contentStyle={{ fontSize: 12, borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
@@ -268,18 +272,26 @@ export default function Dashboard({ patients, onNavigate }: Props) {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex flex-col gap-2 mt-2">
+          <div className="flex flex-col gap-2.5 mt-3 pt-3 border-t border-[rgba(60,60,67,0.08)]">
             {donutData.map((d, i) => (
-              <div key={d.name} className="flex items-center justify-between text-[13px]">
+              <div key={d.name} className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="w-3 h-3 rounded-full" style={{ backgroundColor: DONUT_COLORS[i] }} />
-                  <span className="text-[#3A3A3C]">{d.name}</span>
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: DONUT_COLORS[i] }} />
+                  <span className="text-[13px] text-[#3A3A3C]">{d.name}</span>
                 </div>
-                <span className="font-semibold text-[#000000]">{d.value}</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[13px] font-bold text-[#000000]">{d.value}</span>
+                  <span className="text-[11px] text-[#8E8E93]">
+                    {active.length > 0 ? `${Math.round((d.value / active.length) * 100)}%` : '0%'}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
-          <p className="text-[12px] text-[#8E8E93] mt-3">Total: {active.length} active patients</p>
+          <div className="mt-3 pt-3 border-t border-[rgba(60,60,67,0.08)] flex items-center justify-between">
+            <span className="text-[12px] text-[#8E8E93]">Total active</span>
+            <span className="text-[15px] font-black text-[#000000]">{active.length}</span>
+          </div>
         </div>
       </div>
     </div>
