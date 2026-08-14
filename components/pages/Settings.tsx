@@ -322,23 +322,20 @@ export default function Settings({ onAddToast, initialSection, username }: Props
                     ) : staff.map((s) => (
                       <tr key={s.id} className="border-b border-[rgba(60,60,67,0.06)] last:border-0">
                         <td className="px-5 py-3.5 font-semibold text-[#000000]">{s.name}</td>
-                          <td className="px-5 py-3.5 text-[#3A3A3C]">{s.role}</td>
-                          <td className="px-5 py-3.5 text-[#8E8E93]">{s.email}</td>
-                          <td className="px-5 py-3.5">
-                            <span className={cn('px-2.5 py-1 rounded-full text-[11px] font-semibold',
-                              s.status === 'Active' ? 'bg-[#34C759]/12 text-[#34C759]' : 'bg-[#8E8E93]/12 text-[#8E8E93]'
-                            )}>
-                              {s.status}
-                            </span>
-                          </td>
-                          <td className="px-5 py-3.5">
-                            <button onClick={() => toggleStaffStatus(s)} className="p-2 rounded-lg text-[#8E8E93] hover:text-[#FF3B30] hover:bg-[#FF3B30]/8 transition-colors">
-                              <UserX className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                        <td className="px-5 py-3.5 text-[#3A3A3C]">{s.role}</td>
+                        <td className="px-5 py-3.5 text-[#8E8E93]">{s.email}</td>
+                        <td className="px-5 py-3.5">
+                          <span className={cn('px-2.5 py-1 rounded-full text-[11px] font-semibold',
+                            s.status === 'Active' ? 'bg-[#34C759]/12 text-[#34C759]' : 'bg-[#8E8E93]/12 text-[#8E8E93]'
+                          )}>{s.status}</span>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <button onClick={() => toggleStaffStatus(s)} className="p-2 rounded-lg text-[#8E8E93] hover:text-[#FF3B30] hover:bg-[#FF3B30]/8 transition-colors">
+                            <UserX className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

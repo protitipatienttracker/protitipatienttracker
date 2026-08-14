@@ -34,23 +34,35 @@ function Avatar({ name }: { name: string }) {
   )
 }
 
+const ALL_PERIODS: [number, number][] = [[0,30],[30,90],[90,120],[120,180],[180,361]]
+
+function getPeriodFromDays(days: number): [number, number] {
+  for (const [start, end] of ALL_PERIODS) {
+    if (days <= end) return [start, end]
+  }
+  // Beyond 361: recurring 181-day windows
+  const base = 180
+  const window = 181
+  const n = Math.ceil((days - base) / window)
+  return [base + (n - 1) * window, base + n * window]
+}
+
 function SubCategoryBar({ daysAdmitted }: { daysAdmitted: number }) {
-  const milestones = [0, 30, 90, 120, 180]
-  const max = 180
-  const pct = Math.min((daysAdmitted / max) * 100, 100)
+  const [periodStart, periodEnd] = getPeriodFromDays(daysAdmitted)
+  const daysInPeriod = periodEnd - periodStart
+  const daysIntoPeriod = Math.max(0, daysAdmitted - periodStart)
+  const pct = Math.min((daysIntoPeriod / daysInPeriod) * 100, 100)
+  const labels = [periodStart, periodEnd]
   return (
     <div className="mt-3">
       <div className="flex justify-between text-[11px] text-[#8E8E93] mb-1">
-        {milestones.map(m => <span key={m}>{m}d</span>)}
+        {labels.map(m => <span key={m}>{m}d</span>)}
       </div>
       <div className="relative h-3 bg-[#E5E5EA] rounded-full overflow-visible">
         <div className="absolute h-full bg-gradient-to-r from-[#007AFF] to-[#5AC8FA] rounded-full" style={{ width: `${pct}%` }} />
         <div className="absolute top-1/2 -translate-y-1/2 w-4 h-4 bg-white border-2 border-[#007AFF] rounded-full shadow-sm" style={{ left: `calc(${pct}% - 8px)` }} />
-        {milestones.slice(1).map(m => (
-          <div key={m} className="absolute top-0 bottom-0 w-px bg-[#C7C7CC]" style={{ left: `${(m / max) * 100}%` }} />
-        ))}
       </div>
-      <p className="text-[13px] text-[#8E8E93] mt-2">Day {daysAdmitted} of 180</p>
+      <p className="text-[13px] text-[#8E8E93] mt-2">Day {daysAdmitted} of {periodEnd}</p>
     </div>
   )
 }

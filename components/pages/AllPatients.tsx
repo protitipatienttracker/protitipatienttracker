@@ -1,6 +1,6 @@
 'use client'
 import { useState, useRef } from 'react'
-import { Search, UserPlus, FileText, Check, Trash2, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, UserPlus, FileText, Check, Trash2, Phone } from 'lucide-react'
 import { StatusBadge, AdmissionTypeBadge } from '@/components/ui/badge-status'
 import { formatDate, type Patient } from '@/lib/data'
 import { deletePatients } from '@/lib/db'
@@ -123,8 +123,6 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission, o
           <span className="text-[13px] text-[#000000] font-medium">{selected.size} selected</span>
           <div className="flex flex-wrap gap-2">
             <button onClick={exportCSV} className="px-3 py-1.5 bg-[#007AFF]/10 text-[#007AFF] rounded-lg text-[12px] font-medium active:opacity-70">Export CSV</button>
-            <button onClick={() => alert('Assign Doctor: Select patients and choose a doctor to bulk-assign.')} className="px-3 py-1.5 bg-[#5856D6]/10 text-[#5856D6] rounded-lg text-[12px] font-medium active:opacity-70">Assign Doctor</button>
-            <button onClick={() => alert('Reminders will be sent for ' + selected.size + ' patients.')} className="px-3 py-1.5 bg-[#FF9500]/10 text-[#FF9500] rounded-lg text-[12px] font-medium active:opacity-70">Reminder</button>
             <button onClick={() => setConfirmDelete(true)} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#FF3B30]/10 text-[#FF3B30] rounded-lg text-[12px] font-medium active:opacity-70">
               <Trash2 className="w-3.5 h-3.5" /> Delete
             </button>
@@ -238,16 +236,7 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission, o
           </table>
         </div>
         <div className="px-5 py-3 border-t border-[rgba(60,60,67,0.08)] flex items-center justify-between bg-[#F9F9F9]">
-          <span className="text-[13px] text-[#8E8E93]">Showing {filtered.length} of {patients.length}</span>
-          <div className="flex items-center gap-1">
-            <button className="p-1.5 rounded-lg text-[#8E8E93] hover:bg-[#E5E5EA] disabled:opacity-30" disabled>
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="text-[12px] px-2.5 py-1 rounded-lg bg-[#007AFF] text-white font-medium">1</span>
-            <button className="p-1.5 rounded-lg text-[#8E8E93] hover:bg-[#E5E5EA] disabled:opacity-30" disabled>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <span className="text-[13px] text-[#8E8E93]">Showing <span className="font-semibold text-[#000000]">{filtered.length}</span> of {patients.length} patients</span>
         </div>
       </div>
     </div>

@@ -229,8 +229,8 @@ export default function Dashboard({ patients, onNavigate }: Props) {
             <h2 className="text-[17px] font-bold text-[#000000]">Admission Breakdown</h2>
             <p className="text-[12px] text-[#8E8E93] mt-0.5">Active patients by type</p>
           </div>
-          <div className="flex-1 min-h-[180px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div style={{ height: 200 }}>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie data={donutData} cx="50%" cy="50%" innerRadius="55%" outerRadius="80%" paddingAngle={3} dataKey="value">
                   {donutData.map((_, i) => <Cell key={i} fill={DONUT_COLORS[i]} />)}
