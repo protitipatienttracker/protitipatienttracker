@@ -20,10 +20,25 @@ export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpd
   const [renewModal, setRenewModal] = useState<Patient | null>(null)
   const [renewNotes, setRenewNotes] = useState('')
 
-  const renewalPatients = patients.filter(p =>
+  const allRenewalPatients = patients.filter(p =>
     p.admissionType !== 'Discharged' &&
     (p.nextActionType === 'Shift to CHS' || p.nextActionType === 'CHS Renewal')
   )
+
+  const renewalPatients = allRenewalPatients.filter(p => {
+    if (dateFilter === 'All' || p.nextActionDue === '—') return true
+    const due = new Date(p.nextActionDue)
+    const now = new Date()
+    if (dateFilter === 'This Week') {
+      const weekEnd = new Date(now); weekEnd.setDate(now.getDate() + 7)
+      return due <= weekEnd
+    }
+    if (dateFilter === 'This Month') {
+      const monthEnd = new Date(now); monthEnd.setDate(now.getDate() + 30)
+      return due <= monthEnd
+    }
+    return true
+  })
 
   function getDaysOverdue(dueDate: string): number {
     if (dueDate === '—') return 0
@@ -51,7 +66,7 @@ export default function RenewalsDue({ patients, onViewPatient, onAddToast, onUpd
     if (onRefreshData) await onRefreshData()
   }
 
-  const overdue = renewalPatients.filter(p => p.nextActionDue !== '—' && getDaysOverdue(p.nextActionDue) > 0)
+  const overdue = allRenewalPatients.filter(p => p.nextActionDue !== '—' && getDaysOverdue(p.nextActionDue) > 0)
 
   return (
     <div className="p-5 sm:p-6 space-y-4">
