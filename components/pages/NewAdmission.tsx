@@ -102,15 +102,17 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
 
   function nextStep() {
     if (step === 0 && !validateStep1()) return
-    if (step === 1) setAssessment(s => ({ ...s, date: personal.admissionDate }))
+    if (step === 1) {
+      setAssessment(s => ({
+        ...s,
+        date: personal.admissionDate,
+        result: admissionType === 'High Support' ? 'Fail' : 'Pass',
+      }))
+    }
     setStep(s => Math.min(s + 1, 3))
   }
 
   function prevStep() { setStep(s => Math.max(s - 1, 0)) }
-
-  const assessmentMismatch =
-    (admissionType === 'Independent' && assessment.result === 'Fail') ||
-    (admissionType === 'High Support' && assessment.result === 'Pass')
 
   function handleSubmit() {
     const age = Number(calcAge(personal.dob)) || 0
@@ -251,14 +253,14 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
           {step === 2 && admissionType !== 'Minor' && (
             <div className="space-y-4">
               <h2 className="text-[14px] font-semibold text-[#000000] flex items-center gap-2"><Brain className="w-4 h-4 text-[#007AFF]" />Capacity Assessment</h2>
-              {assessmentMismatch && (
-                <div className="flex items-start gap-2.5 p-4 bg-[#FF9500]/10 rounded-2xl">
-                  <AlertTriangle className="w-4 h-4 text-[#FF9500] shrink-0 mt-0.5" />
-                  <p className="text-[12px] text-[#FF9500]">
-                    Result ({assessment.result}) doesn't match admission type ({admissionType}). Please verify.
-                  </p>
-                </div>
-              )}
+              <div className="flex items-start gap-2.5 p-4 rounded-2xl" style={{ background: admissionType === 'High Support' ? 'rgba(255,59,48,0.08)' : 'rgba(52,199,89,0.08)' }}>
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: admissionType === 'High Support' ? '#FF3B30' : '#34C759' }} />
+                <p className="text-[12px]" style={{ color: admissionType === 'High Support' ? '#FF3B30' : '#34C759' }}>
+                  {admissionType === 'High Support'
+                    ? 'High Support admission requires a failed capacity assessment (patient lacks capacity).'
+                    : 'Independent admission requires a passed capacity assessment (patient has capacity).'}
+                </p>
+              </div>
               <div className="grid gap-4">
                 <Field label="Assessment Date" required>
                   <Input type="date" value={assessment.date} onChange={e => setAssessment(s => ({ ...s, date: e.target.value }))} />
@@ -268,11 +270,13 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                     {DOCTORS.map(d => <option key={d}>{d}</option>)}
                   </Select>
                 </Field>
-                <Field label="Result" required>
-                  <Select value={assessment.result} onChange={e => setAssessment(s => ({ ...s, result: e.target.value }))}>
-                    <option value="Pass">Pass — Patient has capacity</option>
-                    <option value="Fail">Fail — Patient lacks capacity</option>
-                  </Select>
+                <Field label="Result">
+                  <div className={cn(
+                    'w-full rounded-xl px-4 py-3 text-[14px] font-medium',
+                    admissionType === 'High Support' ? 'bg-[#FF3B30]/10 text-[#FF3B30]' : 'bg-[#34C759]/10 text-[#34C759]'
+                  )}>
+                    {admissionType === 'High Support' ? 'Fail — Patient lacks capacity' : 'Pass — Patient has capacity'}
+                  </div>
                 </Field>
                 <Field label="Notes">
                   <textarea value={assessment.notes} onChange={e => setAssessment(s => ({ ...s, notes: e.target.value }))} rows={3}

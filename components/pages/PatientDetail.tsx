@@ -181,14 +181,14 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
   }
 
   async function handleShiftType() {
-    if (!patient.activeAdmissionId || !shiftReason.trim()) { onAddToast('error', 'Please fill reason'); return }
+    if (!patient.activeAdmissionId) { onAddToast('error', 'No active admission'); return }
     const newSub = shiftTo === 'High Support' ? 'HS ≤30 days' : shiftTo
     await updateSubCategory(patient.activeAdmissionId, newSub)
     await insertTransfer({
       patient_id: patient.id, from_admission_id: patient.activeAdmissionId,
       to_admission_id: patient.activeAdmissionId, transfer_date: shiftDate,
       from_type: patient.currentSubStatus, to_type: newSub,
-      reason: shiftReason, triggered_by: 'Staff', notes: null,
+      reason: shiftReason || 'Type shift', triggered_by: 'Staff', notes: null,
     })
     setShiftDone(true)
     if (newSub === 'HS ≤30 days') {
@@ -794,7 +794,7 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
                 </select>
               </div>
               <div>
-                <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Reason</label>
+                <label className="block text-[13px] font-medium text-[#3A3A3C] mb-1.5">Reason <span className="text-[#8E8E93] font-normal">(optional)</span></label>
                 <input value={shiftReason} onChange={e => setShiftReason(e.target.value)} placeholder="Reason for shift"
                   className="w-full bg-[#F2F2F7] border border-[#E5E5EA] rounded-xl px-4 py-3 text-[14px] outline-none focus:ring-2 focus:ring-[#007AFF]/30" />
               </div>
