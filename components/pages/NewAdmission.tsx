@@ -83,11 +83,16 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
   const [assessment, setAssessment] = useState({ date: new Date().toISOString().split('T')[0], assessedBy: DOCTORS[0], result: 'Pass', notes: '' })
   const [errors, setErrors] = useState<Partial<PersonalInfo>>({})
 
-  function calcAge(dob: string) {
+  function calcAge(dob: string): string {
     if (!dob) return ''
     const d = new Date(dob)
     const now = new Date()
-    return Math.floor((now.getTime() - d.getTime()) / (365.25 * 86400000)).toString()
+    let age = now.getFullYear() - d.getFullYear()
+    const notYetHadBirthday =
+      now.getMonth() < d.getMonth() ||
+      (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())
+    if (notYetHadBirthday) age--
+    return age.toString()
   }
 
   function validateStep1(): boolean {
@@ -100,8 +105,14 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
     return Object.keys(e).length === 0
   }
 
+  const age = personal.dob ? Number(calcAge(personal.dob)) : null
+  const isMinorByAge = age !== null && age < 18
+  const isAdultByAge = age !== null && age >= 18
+
   function nextStep() {
     if (step === 0 && !validateStep1()) return
+    if (step === 0 && isMinorByAge) setAdmissionType('Minor')
+    if (step === 0 && isAdultByAge && admissionType === 'Minor') setAdmissionType('Independent')
     if (step === 1) {
       setAssessment(s => ({
         ...s,
@@ -217,13 +228,29 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
           {step === 1 && (
             <div className="space-y-4">
               <h2 className="text-[14px] font-semibold text-[#000000] flex items-center gap-2"><ClipboardList className="w-4 h-4 text-[#007AFF]" />Select Admission Type</h2>
+              {isMinorByAge && (
+                <div className="flex items-start gap-2.5 p-3 bg-[#AF52DE]/10 rounded-2xl">
+                  <AlertTriangle className="w-4 h-4 text-[#AF52DE] shrink-0 mt-0.5" />
+                  <p className="text-[12px] text-[#AF52DE]">Patient is under 18. Only Minor admission is permitted.</p>
+                </div>
+              )}
+              {isAdultByAge && (
+                <div className="flex items-start gap-2.5 p-3 bg-[#FF9500]/10 rounded-2xl">
+                  <AlertTriangle className="w-4 h-4 text-[#FF9500] shrink-0 mt-0.5" />
+                  <p className="text-[12px] text-[#FF9500]">Patient is 18 or older. Minor admission is not permitted.</p>
+                </div>
+              )}
               <div className="grid gap-3">
-                {typeCards.map(card => (
+                {typeCards.map(card => {
+                  const blocked = (isMinorByAge && card.type !== 'Minor') || (isAdultByAge && card.type === 'Minor')
+                  return (
                   <button
                     key={card.type}
-                    onClick={() => setAdmissionType(card.type)}
+                    onClick={() => !blocked && setAdmissionType(card.type)}
+                    disabled={blocked}
                     className={cn(
                       'flex items-start gap-4 p-4 rounded-2xl text-left transition-all',
+                      blocked ? 'opacity-30 cursor-not-allowed bg-[#F2F2F7]' :
                       admissionType === card.type ? card.color : 'bg-[#F2F2F7] hover:bg-[#E5E5EA]'
                     )}
                   >
@@ -242,7 +269,8 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                       </div>
                     </div>
                   </button>
-                ))}
+                )})
+              }
               </div>
               {admissionType !== 'Minor' && (
                 <div className="flex items-start gap-2.5 p-4 bg-[#007AFF]/8 rounded-2xl">
@@ -291,15 +319,30 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
           )}
 
           {/* Step 3: Minor */}
-          {step === 2 && admissionType === 'Minor' && (
-            <div className="flex flex-col items-center py-8 text-center gap-3">
-              <div className="w-14 h-14 rounded-full bg-[#AF52DE]/10 flex items-center justify-center">
-                <CheckCircle2 className="w-7 h-7 text-[#AF52DE]" />
+          {step === 2 && admissionType === 'Minor' && (() => {
+            const eighteenth = personal.dob ? (() => {
+              const d = new Date(personal.dob)
+              d.setFullYear(d.getFullYear() + 18)
+              return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+            })() : null
+            return (
+              <div className="flex flex-col items-center py-8 text-center gap-3">
+                <div className="w-14 h-14 rounded-full bg-[#AF52DE]/10 flex items-center justify-center">
+                  <CheckCircle2 className="w-7 h-7 text-[#AF52DE]" />
+                </div>
+                <p className="text-[15px] font-medium text-[#000000]">No assessment required</p>
+                <p className="text-[13px] text-[#8E8E93]">Minor admission is based on age criteria only.</p>
+                {eighteenth && (
+                  <div className="mt-1 flex items-start gap-2.5 p-3 bg-[#AF52DE]/10 rounded-2xl text-left w-full">
+                    <AlertTriangle className="w-4 h-4 text-[#AF52DE] shrink-0 mt-0.5" />
+                    <p className="text-[12px] text-[#AF52DE]">
+                      A capacity assessment will be scheduled on their 18th birthday — <strong>{eighteenth}</strong>.
+                    </p>
+                  </div>
+                )}
               </div>
-              <p className="text-[15px] font-medium text-[#000000]">No assessment required</p>
-              <p className="text-[13px] text-[#8E8E93]">Minor admission is based on age criteria only.</p>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Step 4: Review */}
           {step === 3 && (
