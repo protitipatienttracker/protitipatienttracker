@@ -26,12 +26,15 @@ create policy "Allow all" on settings for all using (true) with check (true);
 
 -- SEED STAFF DATA
 insert into staff (name, role, email, status) values
-('Arjun Sathe', 'Psychiatrist', 'arjun.sathe@protiti.in', 'Active'),
-('Dr. Rajan Pillai', 'Psychiatrist', 'rajan.pillai@caretrack.in', 'Active'),
-('Dr. Anand Krishnan', 'Psychiatrist', 'anand.krishnan@caretrack.in', 'Active'),
-('Dr. Pradeep Nair', 'Consultant', 'pradeep.nair@caretrack.in', 'Active'),
-('Kavitha Menon', 'Clinical Coordinator', 'kavitha.menon@caretrack.in', 'Active'),
-('Sujatha Varma', 'Admin Staff', 'sujatha.varma@caretrack.in', 'Inactive');
+('Dr Ashutosh Chauhan', 'MD Neuropsychiatry', '', 'Active'),
+('Dr Himani Kulkarni', 'DPM', '', 'Active'),
+('Dr Santosh Chavan', 'DPM', '', 'Active'),
+('Dr Shweta Biradar', 'DPM', '', 'Active'),
+('Dr Chaitanya Lata Singh', 'DPM', '', 'Active'),
+('Dr Avinash Kulkarni', 'MD General Medicine', '', 'Active'),
+('Dr Harish Patil', 'BHMS', '', 'Active'),
+('Dr Heena Joshi', 'BHMS', '', 'Active'),
+('Dr Smita Patwardhan', 'BAMS', '', 'Active');
 
 -- SEED DEFAULT SETTINGS
 insert into settings (key, value) values

@@ -18,6 +18,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
 import { type Toast, ToastContainer } from '@/components/ui/toast'
+import type { BulkPatientRow } from '@/components/pages/BulkUpload'
 import type { ToastType } from '@/components/ui/toast'
 
 import Sidebar from '@/components/Sidebar'
@@ -225,6 +226,59 @@ export default function Page() {
   }
 
   // ── Admission
+  async function handleBulkAdmission(rows: BulkPatientRow[]) {
+    for (const row of rows) {
+      const codes = await fetchAllPatientCodes(facility)
+      const patientCode = getNextPatientCode(codes)
+      const admissionType = row.admission_type as 'Independent' | 'High Support' | 'Minor'
+      const subCategory = admissionType === 'High Support' ? 'HS ≤30 days'
+        : admissionType === 'Independent' ? 'Independent' : 'Minor'
+      const { patient: newPatient, admission, error } = await admitNewPatient(
+        {
+          patient_code: patientCode,
+          full_name: row.full_name,
+          date_of_birth: row.date_of_birth,
+          gender: row.gender,
+          phone: row.phone || null,
+          emergency_contact_name: row.emergency_contact_name || null,
+          emergency_contact_phone: row.emergency_contact_phone || null,
+          address: row.address || null,
+          treating_doctor: row.treating_doctor || null,
+          facility,
+        },
+        {
+          admission_type: admissionType,
+          sub_category: subCategory,
+          admission_date: row.admission_date,
+          discharge_date: null,
+          discharge_reason: null,
+          status: 'Active',
+          admitted_by: row.admitted_by || null,
+          notes: row.diagnosis || null,
+        }
+      )
+      if (error || !newPatient) continue
+      if (admissionType !== 'Minor' && row.assessment_date && row.assessed_by && admission) {
+        const nextDue = getNextAssessmentDate(row.admission_date, row.assessment_date, admissionType, subCategory)
+        await addCapacityAssessment({
+          patient_id: newPatient.id,
+          admission_id: admission.id,
+          assessment_date: row.assessment_date,
+          assessed_by: row.assessed_by,
+          result: admissionType === 'High Support' ? 'Fail' : 'Pass',
+          notes: row.assessment_notes || null,
+          next_assessment_due: nextDue.toISOString().split('T')[0],
+        })
+      }
+      await generateAdmissionNotifications(
+        newPatient.id, row.full_name, patientCode,
+        admissionType, row.admission_date, row.date_of_birth,
+      )
+    }
+    await loadData()
+    setPage('all-patients')
+  }
+
   async function handleNewAdmission(partial: Partial<Patient>) {
     const codes = await fetchAllPatientCodes(facility)
     const patientCode = getNextPatientCode(codes)
@@ -358,7 +412,7 @@ export default function Page() {
           <PatientDetail patient={selectedPatient} onBack={() => { loadData(); navigate('all-patients') }} onNavigate={navigate} onAddToast={addToast} onUpdatePatient={updatePatient} onRefreshPatient={refreshPatient} onRefreshData={loadData} />
         )
       ) : <div className="p-6 text-[#8E8E93] text-[14px]">Patient not found.</div>
-      case 'new-admission': return <NewAdmission onSubmit={handleNewAdmission} prefill={readmitPrefill} />
+      case 'new-admission': return <NewAdmission onSubmit={handleNewAdmission} onSubmitBulk={handleBulkAdmission} prefill={readmitPrefill} />
       case 'capacity-assessments': case 'assessment-schedule': return <CapacityAssessments patients={patients} onViewPatient={viewPatient} onAddToast={addToast} onUpdatePatient={updatePatient} onRefreshData={loadData} />
       case 'renewals-due': return <RenewalsDue patients={patients} onViewPatient={viewPatient} onAddToast={addToast} onUpdatePatient={updatePatient} onRefreshData={loadData} />
       case 'transfers': return <Transfers transfers={transfers} patients={patients} onAddTransfer={addTransfer} onAddToast={addToast} onRefreshData={loadData} />

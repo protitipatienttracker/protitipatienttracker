@@ -1,8 +1,9 @@
 'use client'
 import { useState } from 'react'
-import { ChevronRight, CheckCircle2, AlertTriangle, User, ClipboardList, Brain, Eye } from 'lucide-react'
+import { ChevronRight, CheckCircle2, AlertTriangle, User, ClipboardList, Brain, Eye, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { DOCTORS, type Patient } from '@/lib/data'
+import BulkUpload, { type BulkPatientRow } from './BulkUpload'
 
 const STEPS = ['Personal Info', 'Admission Type', 'Assessment', 'Review & Submit']
 
@@ -65,10 +66,12 @@ interface PersonalInfo {
 
 interface Props {
   onSubmit: (patient: Partial<Patient>) => void
+  onSubmitBulk: (rows: BulkPatientRow[]) => Promise<void>
   prefill?: Partial<PersonalInfo>
 }
 
-export default function NewAdmission({ onSubmit, prefill }: Props) {
+export default function NewAdmission({ onSubmit, onSubmitBulk, prefill }: Props) {
+  const [mode, setMode] = useState<'single' | 'bulk'>('single')
   const [step, setStep] = useState(0)
   const [personal, setPersonal] = useState<PersonalInfo>({
     fullName: prefill?.fullName ?? '',
@@ -182,11 +185,34 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
 
   return (
     <div className="p-4 sm:p-6 max-w-2xl">
-      <div className="mb-4">
-        <h1 className="text-[20px] font-black text-[#000000] tracking-tight">New Admission</h1>
-        <p className="text-[12px] text-[#8E8E93] mt-0.5">Complete all steps to admit a patient</p>
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-[20px] font-black text-[#000000] tracking-tight">New Admission</h1>
+          <p className="text-[12px] text-[#8E8E93] mt-0.5">
+            {mode === 'single' ? 'Complete all steps to admit a patient' : 'Upload a CSV to admit multiple patients at once'}
+          </p>
+        </div>
+        <div className="flex items-center bg-[#F2F2F7] rounded-xl p-1 shrink-0">
+          <button onClick={() => setMode('single')}
+            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all',
+              mode === 'single' ? 'bg-white text-[#007AFF] shadow-sm' : 'text-[#8E8E93]')}>
+            <User className="w-3.5 h-3.5" /> Single
+          </button>
+          <button onClick={() => setMode('bulk')}
+            className={cn('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium transition-all',
+              mode === 'bulk' ? 'bg-white text-[#007AFF] shadow-sm' : 'text-[#8E8E93]')}>
+            <Upload className="w-3.5 h-3.5" /> Bulk
+          </button>
+        </div>
       </div>
-      <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
+
+      {mode === 'bulk' && (
+        <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white p-4 sm:p-6">
+          <BulkUpload onSubmitBulk={onSubmitBulk} />
+        </div>
+      )}
+
+      {mode === 'single' && <div className="rounded-2xl border border-[rgba(60,60,67,0.12)] bg-white overflow-hidden">
         {/* Step Indicator */}
         <div className="px-6 py-5 bg-[#F9F9F9] border-b border-[rgba(60,60,67,0.08)] overflow-x-auto">
           <StepIndicator current={step} total={STEPS.length} />
@@ -431,7 +457,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
             </button>
           )}
         </div>
-      </div>
+      </div>}
     </div>
   )
 }
