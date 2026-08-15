@@ -83,16 +83,32 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
   const [assessment, setAssessment] = useState({ date: new Date().toISOString().split('T')[0], assessedBy: DOCTORS[0], result: 'Pass', notes: '' })
   const [errors, setErrors] = useState<Partial<PersonalInfo>>({})
 
-  function calcAge(dob: string): string {
+  function calcAge(dob: string, asOf?: string): string {
     if (!dob) return ''
     const d = new Date(dob)
-    const now = new Date()
-    let age = now.getFullYear() - d.getFullYear()
-    const notYetHadBirthday =
-      now.getMonth() < d.getMonth() ||
-      (now.getMonth() === d.getMonth() && now.getDate() < d.getDate())
-    if (notYetHadBirthday) age--
-    return age.toString()
+    const ref = asOf ? new Date(asOf) : new Date()
+    let years = ref.getFullYear() - d.getFullYear()
+    let months = ref.getMonth() - d.getMonth()
+    let days = ref.getDate() - d.getDate()
+    if (days < 0) {
+      months--
+      days += new Date(ref.getFullYear(), ref.getMonth(), 0).getDate()
+    }
+    if (months < 0) { years--; months += 12 }
+    const parts = []
+    if (years > 0) parts.push(`${years}y`)
+    if (months > 0) parts.push(`${months}m`)
+    if (days > 0 || parts.length === 0) parts.push(`${days}d`)
+    return parts.join(' ')
+  }
+
+  function calcAgeYearsOnly(dob: string, asOf?: string): number {
+    if (!dob) return 0
+    const d = new Date(dob)
+    const ref = asOf ? new Date(asOf) : new Date()
+    let age = ref.getFullYear() - d.getFullYear()
+    if (ref.getMonth() < d.getMonth() || (ref.getMonth() === d.getMonth() && ref.getDate() < d.getDate())) age--
+    return age
   }
 
   function validateStep1(): boolean {
@@ -105,9 +121,10 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
     return Object.keys(e).length === 0
   }
 
-  const age = personal.dob ? Number(calcAge(personal.dob)) : null
+  const age = personal.dob ? calcAgeYearsOnly(personal.dob, personal.admissionDate) : null
   const isMinorByAge = age !== null && age < 18
   const isAdultByAge = age !== null && age >= 18
+
 
   function nextStep() {
     if (step === 0 && !validateStep1()) return
@@ -126,7 +143,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
   function prevStep() { setStep(s => Math.max(s - 1, 0)) }
 
   function handleSubmit() {
-    const age = Number(calcAge(personal.dob)) || 0
+    const age = calcAgeYearsOnly(personal.dob, personal.admissionDate) || 0
     onSubmit({
       name: personal.fullName,
       age,
@@ -188,7 +205,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                 </div>
                 <Field label="Date of Birth (DD/MM/YYYY)" required error={errors.dob}>
                   <Input type="date" value={personal.dob} onChange={e => setPersonal(s => ({ ...s, dob: e.target.value }))} />
-                  {personal.dob && <p className="text-[12px] text-[#8E8E93] mt-1">Age: {calcAge(personal.dob)} years</p>}
+                  {personal.dob && <p className="text-[12px] text-[#8E8E93] mt-1">Age: {calcAge(personal.dob, personal.admissionDate)}</p>}
                 </Field>
                 <Field label="Gender" required error={errors.gender}>
                   <Select value={personal.gender} onChange={e => setPersonal(s => ({ ...s, gender: e.target.value }))}>
@@ -356,7 +373,7 @@ export default function NewAdmission({ onSubmit, prefill }: Props) {
                 {[
                   ['Name', personal.fullName],
                   ['DOB', personal.dob],
-                  ['Age', calcAge(personal.dob)],
+                  ['Age', calcAge(personal.dob, personal.admissionDate)],
                   ['Gender', personal.gender],
                   ['Diagnosis', personal.diagnosis || '—'],
                   ['Doctor', personal.doctor],

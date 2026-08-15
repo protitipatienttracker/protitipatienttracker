@@ -398,6 +398,21 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
 
                     // Upcoming scheduled CAs
                     const upcoming: { date: string; label: string; sub: string; color: string; future: boolean; milestoneShift?: { from: string; to: string } }[] = []
+                    // 18th birthday event for Minor patients
+                    if (patient.admissionType === 'Minor' && patient.dob) {
+                      const dob = new Date(patient.dob)
+                      dob.setFullYear(dob.getFullYear() + 18)
+                      const eighteenth = dob.toISOString().split('T')[0]
+                      const isFuture = eighteenth > today
+                      upcoming.push({
+                        date: eighteenth,
+                        label: '18th Birthday — Capacity Assessment Required',
+                        sub: 'Minor admission ends; capacity assessment must be conducted',
+                        color: '#AF52DE',
+                        future: isFuture,
+                      })
+                    }
+
                     if (patient.admissionType !== 'Discharged' && patient.admissionType !== 'Minor' && patient.admissionDate) {
                       const admDate = patient.admissionDate
                       // hsOriginDate: for milestone boundaries (Day 31, 91, 121, 181 from original HS start)
