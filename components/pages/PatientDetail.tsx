@@ -355,20 +355,25 @@ export default function PatientDetail({ patient, onBack, onNavigate, onAddToast,
               <div>
                 <h3 className="text-[12px] font-semibold text-[#8E8E93] uppercase tracking-wide mb-3">Current Admission</h3>
                 <div className="bg-[#F2F2F7] rounded-2xl overflow-hidden">
-                  {[
+                  {(patient.admissionType === 'Minor' ? [
+                    ['Admission Date', formatDate(patient.admissionDate)],
+                    ['Sub-Category', patient.currentSubStatus],
+                    ['Days Admitted', patient.daysAdmitted],
+                    ['18th Birthday', patient.nextActionDue !== '—' ? formatDate(patient.nextActionDue) : '—'],
+                  ] : [
                     ['Admission Date', formatDate(patient.admissionDate)],
                     ['Sub-Category', patient.currentSubStatus],
                     ['Days Admitted', patient.daysAdmitted],
                     ['Next Assessment', patient.assessments.slice(-1)[0]?.nextDue ? formatDate(patient.assessments.slice(-1)[0].nextDue) : '—'],
                     ['Next Renewal', patient.nextActionDue !== '—' ? formatDate(patient.nextActionDue) : '—'],
-                  ].map(([label, value], i, arr) => (
+                  ]).map(([label, value], i, arr) => (
                     <div key={String(label)} className={cn('flex items-center justify-between px-4 py-3 min-h-[44px]', i < arr.length - 1 && 'ios-separator')}>
                       <span className="text-[13px] text-[#8E8E93]">{label}</span>
                       <span className="text-[13px] font-semibold text-[#000000]">{String(value)}</span>
                     </div>
                   ))}
                 </div>
-                <SubCategoryBar daysAdmitted={patient.daysAdmitted} />
+                {patient.admissionType !== 'Minor' && <SubCategoryBar daysAdmitted={patient.daysAdmitted} />}
               </div>
 
               {/* Patient Timeline */}

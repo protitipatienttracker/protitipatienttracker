@@ -142,9 +142,18 @@ function mapPatientStatus(
   subCategory: string | null,
   lastAssessmentDate: string | null,
   admissionDate: string,
+  dbPatient_dob?: string,
 ): { status: PatientStatus; reason: string } {
   if (admissionType === 'Discharged') return { status: 'Discharged', reason: '' }
-  if (admissionType === 'Minor') return { status: 'On Track', reason: '' }
+  if (admissionType === 'Minor') {
+    if (!dbPatient_dob) return { status: 'On Track', reason: '' }
+    const eighteenth = new Date(dbPatient_dob)
+    eighteenth.setFullYear(eighteenth.getFullYear() + 18)
+    const daysUntil18 = Math.floor((eighteenth.getTime() - Date.now()) / 86400000)
+    if (daysUntil18 < 0) return { status: 'Action Needed', reason: 'Patient has turned 18 — capacity assessment required' }
+    if (daysUntil18 <= 7) return { status: 'Due Soon', reason: `Turns 18 in ${daysUntil18}d` }
+    return { status: 'On Track', reason: '' }
+  }
   if (admissionType === 'Independent') return { status: 'On Track', reason: '' }
   if (admissionType === 'High Support') {
     const renewal = getNextRenewalDate(admissionDate, subCategory)
@@ -268,7 +277,7 @@ export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
     }
   }
 
-  const { status, reason: statusReason } = mapPatientStatus(admissionType, daysAdmitted, subCategory, lastAssessmentDate, hsStartDate)
+  const { status, reason: statusReason } = mapPatientStatus(admissionType, daysAdmitted, subCategory, lastAssessmentDate, hsStartDate, dbPatient.date_of_birth)
 
   // Discharge info
   const dischargedAdmission = admissions.find(a => a.status === 'Discharged' && !activeAdmission)
@@ -282,9 +291,13 @@ export function mapDbPatientToUi(dbPatient: DbPatient): Patient {
     id: dbPatient.id,
     patientCode: dbPatient.patient_code,
     name: dbPatient.full_name,
-    age: getDaysAdmitted(dbPatient.date_of_birth) > 0
-      ? Math.floor(getDaysAdmitted(dbPatient.date_of_birth) / 365)
-      : 0,
+    age: (() => {
+      const dob = new Date(dbPatient.date_of_birth)
+      const ref = admissionDate ? new Date(admissionDate) : new Date()
+      let a = ref.getFullYear() - dob.getFullYear()
+      if (ref.getMonth() < dob.getMonth() || (ref.getMonth() === dob.getMonth() && ref.getDate() < dob.getDate())) a--
+      return Math.max(0, a)
+    })(),
     gender: dbPatient.gender,
     dob: dbPatient.date_of_birth,
     phone: dbPatient.phone ?? '',

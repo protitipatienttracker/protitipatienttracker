@@ -218,7 +218,7 @@ export default function AllPatients({ patients, onViewPatient, onNewAdmission, o
                       {p.admissionType === 'Discharged' ? '—' : p.daysAdmitted}
                     </td>
                     <td className="px-5 py-3 text-[#3A3A3C] hidden xl:table-cell">
-                      {p.nextActionDue === '—' ? '—' : p.nextActionType}
+                      {p.nextActionDue === '—' ? '—' : p.admissionType === 'Minor' ? `Turns 18: ${formatDate(p.nextActionDue)}` : p.nextActionType}
                     </td>
                     <td className="px-5 py-3"><StatusBadge status={p.status} tooltip={p.statusReason || undefined} /></td>
                     <td className="px-5 py-3">
